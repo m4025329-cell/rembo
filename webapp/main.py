@@ -178,7 +178,7 @@ async def api_plans(request: Request) -> dict:
 
 
 class PayRequest(BaseModel):
-    plan: str = Field(..., pattern=r"^(1m|3m|12m)$")
+    plan: str = Field(..., pattern=r"^(1m|3m|6m)$")
 
 
 @app.post("/api/pay")

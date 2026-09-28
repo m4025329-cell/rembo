@@ -9,15 +9,22 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from db.models import User, Subscription, VPNKey, SupportMessage
+from db.models import User, Subscription, VPNKey, SupportMessage, DeviceSlot
 from security.crypto import encrypt, try_decrypt
 
 
-# Тарифы: длительность (дни) и цена (рубли) — заглушки
+# Цена базовой подписки (руб/мес) и цена доп. устройства (руб/мес)
+# — читаются из .env для быстрой смены без деплоя.
+import os
+BASE_PRICE = float(os.getenv("BASE_PRICE", "150"))
+DEVICE_PRICE = float(os.getenv("DEVICE_PRICE", "75"))
+
+
+# Тарифы: длительность (дни) и цена (рубли) — 1 устройство включено в цену
 PLANS = {
-    "1m": {"days": 30, "price": 199.0, "title": "1 месяц"},
-    "3m": {"days": 90, "price": 499.0, "title": "3 месяца"},
-    "12m": {"days": 365, "price": 1499.0, "title": "12 месяцев"},
+    "1m": {"days": 30, "price": 150.0, "title": "1 устройство / 30 дней"},
+    "3m": {"days": 90, "price": 350.0, "title": "1 устройство / 90 дней"},
+    "6m": {"days": 180, "price": 600.0, "title": "1 устройство / 180 дней"},
 }
 
 # Список серверов (hardcode-заглушка)
@@ -152,6 +159,27 @@ async def list_keys(session: AsyncSession, user: User) -> list[VPNKey]:
     for k in keys:
         k.key_value = try_decrypt(k.key_value)
     return keys
+
+
+# ------------------------- Доп. устройства -------------------------
+
+async def count_devices(session: AsyncSession, user: User) -> int:
+    """Сколько ДОПОЛНИТЕЛЬНЫХ устройств заведено (без 1-го бесплатного)."""
+    result = await session.execute(
+        select(func.count(DeviceSlot.id)).where(DeviceSlot.access_id == user.id)
+    )
+    return int(result.scalar_one() or 0)
+
+
+async def add_device(
+    session: AsyncSession, user: User, device_name: str
+) -> DeviceSlot:
+    """Добавить слот доп. устройства (в MVP без реальной оплаты)."""
+    slot = DeviceSlot(access_id=user.id, device_name=device_name.strip()[:128])
+    session.add(slot)
+    await session.commit()
+    await session.refresh(slot)
+    return slot
 
 
 # ------------------------- Поддержка -------------------------

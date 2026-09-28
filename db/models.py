@@ -73,6 +73,24 @@ class VPNKey(Base):
     user: Mapped[User] = relationship(back_populates="keys")
 
 
+class DeviceSlot(Base):
+    """
+    Слот доп. устройства пользователя.
+    Первое устройство входит в тариф бесплатно (в этой таблице не хранится),
+    все последующие — платные (см. DEVICE_PRICE в .env).
+    """
+    __tablename__ = "device_slots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Ссылка на подписку/доступ (access) — здесь на пользователя
+    access_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    # Пользовательское имя устройства (iPhone, Windows-ноут и т.п.)
+    device_name: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship()
+
+
 class SupportMessage(Base):
     """Сообщение из формы поддержки в мини-приложении."""
     __tablename__ = "support_messages"

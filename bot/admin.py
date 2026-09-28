@@ -117,7 +117,7 @@ async def cb_grant(cb: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(AdminStates.waiting_grant)
     await cb.message.answer(
         "Отправь в формате: <code>&lt;tg_id&gt; &lt;plan&gt;</code>\n"
-        "Планы: 1m / 3m / 12m\n"
+        "Планы: 1m / 3m / 6m\n"
         "Пример: <code>1783373795 3m</code>",
         parse_mode="HTML",
     )
@@ -134,7 +134,7 @@ async def grant_process(message: Message, state: FSMContext) -> None:
         return
     tg_id_str, plan = parts
     if plan not in PLANS:
-        await message.answer("Неизвестный тариф. Доступно: 1m / 3m / 12m")
+        await message.answer("Неизвестный тариф. Доступно: 1m / 3m / 6m")
         return
     try:
         tg_id = int(tg_id_str)
