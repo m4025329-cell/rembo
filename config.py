@@ -20,7 +20,13 @@ class Settings(BaseSettings):
 
     # ── Telegram ────────────────────────────────────────────────────
     BOT_TOKEN: str = Field(..., min_length=20, description="Токен @BotFather")
-    ADMIN_ID: int = Field(..., description="Telegram user_id админа")
+    ADMIN_ID: int = Field(..., description="Telegram user_id главного админа")
+    # Опционально: список всех админов через запятую (напр. "111,222")
+    ADMIN_IDS: str = ""
+    # Юзернейм оператора поддержки (без @). Используется в WebApp/боте.
+    SUPPORT_USERNAME: str = "pivozavr35"
+    # Название сервиса (для интерфейсов и уведомлений)
+    SERVICE_NAME: str = "BlackLotusVPN"
 
     # ── Мини-приложение ─────────────────────────────────────────────
     WEBAPP_URL: str = Field(..., min_length=1)
@@ -28,6 +34,10 @@ class Settings(BaseSettings):
     ALLOWED_ORIGIN: str | None = None
     # В проде обязано быть False. Даёт fallback без initData — только для dev.
     DEBUG: bool = False
+
+    # ── Тарификация ────────────────────────────────────────────────
+    BASE_PRICE: float = 150.0
+    DEVICE_PRICE: float = 75.0
 
     # ── БД ──────────────────────────────────────────────────────────
     DATABASE_URL: str = "sqlite:///./db-data/blacklotus.db"
@@ -109,6 +119,27 @@ class Settings(BaseSettings):
     @property
     def is_prod(self) -> bool:
         return not self.DEBUG
+
+    @property
+    def admin_ids_list(self) -> list[int]:
+        """Все админы: ADMIN_ID + опциональные ADMIN_IDS через запятую."""
+        ids = {self.ADMIN_ID}
+        for chunk in (self.ADMIN_IDS or "").split(","):
+            chunk = chunk.strip()
+            if chunk.isdigit():
+                ids.add(int(chunk))
+        return sorted(ids)
+
+    @property
+    def support_url(self) -> str:
+        """Ссылка вида https://t.me/<username>."""
+        u = (self.SUPPORT_USERNAME or "").lstrip("@")
+        return f"https://t.me/{u}" if u else ""
+
+    @property
+    def has_real_webapp(self) -> bool:
+        """WEBAPP_URL задан и это не плейсхолдер example.com."""
+        return bool(self.WEBAPP_URL) and "example.com" not in self.WEBAPP_URL
 
     def masked(self) -> dict[str, Any]:
         """Настройки для лога (все секреты замаскированы)."""

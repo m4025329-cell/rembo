@@ -8,21 +8,46 @@ from aiogram.types import (
 from config import settings
 
 
+def webapp_kb(url: str) -> InlineKeyboardMarkup:
+    """
+    Расширенная клавиатура /start, когда мини-приложение опубликовано.
+    Первая кнопка открывает WebApp, ниже — быстрые ссылки на разделы.
+    """
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="🖤 Открыть BlackLotusVPN",
+            web_app=WebAppInfo(url=url),
+        )],
+        [
+            InlineKeyboardButton(text="💳 Тарифы",    callback_data="menu:plans"),
+            InlineKeyboardButton(text="🔑 Мой доступ", callback_data="menu:access"),
+        ],
+        [InlineKeyboardButton(text="ℹ️ Помощь", callback_data="menu:help")],
+    ])
+
+
+def main_kb() -> InlineKeyboardMarkup:
+    """
+    Fallback-клавиатура, если WEBAPP_URL ещё не настроен (или равен
+    плейсхолдеру example.com). WebApp-кнопки нет.
+    """
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="💳 Тарифы",     callback_data="menu:plans"),
+            InlineKeyboardButton(text="🔑 Мой доступ",  callback_data="menu:access"),
+        ],
+        [InlineKeyboardButton(text="ℹ️ Помощь", callback_data="menu:help")],
+    ])
+
+
 def main_menu_kb() -> InlineKeyboardMarkup:
     """
-    Главная клавиатура /start.
-    Одна кнопка — открытие мини-приложения BlackLotusVPN.
+    Обратно совместимый alias: возвращает webapp_kb при заданном
+    WEBAPP_URL, иначе main_kb.
     """
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🖤 Открыть BlackLotusVPN",
-                    web_app=WebAppInfo(url=settings.WEBAPP_URL),
-                )
-            ]
-        ]
-    )
+    if settings.has_real_webapp:
+        return webapp_kb(settings.WEBAPP_URL)
+    return main_kb()
 
 
 def access_menu_kb(has_active_sub: bool) -> InlineKeyboardMarkup:

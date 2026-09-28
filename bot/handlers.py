@@ -8,10 +8,16 @@ from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import CallbackQuery, Message
 
+from config import settings
 from db.database import AsyncSessionLocal
-from db.repo import BASE_PRICE, DEVICE_PRICE, get_or_create_user
+from db.repo import BASE_PRICE, DEVICE_PRICE, PLANS, get_or_create_user
 
-from .keyboards import access_menu_kb, add_device_kb, main_menu_kb
+from .keyboards import (
+    access_menu_kb,
+    add_device_kb,
+    main_kb,
+    webapp_kb,
+)
 
 
 router = Router(name="user")
@@ -43,8 +49,10 @@ async def cmd_start(message: Message) -> None:
             username=user.username,
             full_name=user.full_name,
         )
-    await message.answer(home_text(), reply_markup=main_menu_kb(),
-                         parse_mode="HTML")
+    # Показываем WebApp-кнопку только когда URL реально настроен.
+    # На плейсхолдере example.com Telegram отказал бы открыть окно.
+    kb = webapp_kb(settings.WEBAPP_URL) if settings.has_real_webapp else main_kb()
+    await message.answer(home_text(), reply_markup=kb, parse_mode="HTML")
 
 
 @router.message(Command("help"))
@@ -101,6 +109,57 @@ async def cb_add_device(cb: CallbackQuery) -> None:
 async def cb_pay_device(cb: CallbackQuery) -> None:
     """Заглушка платёжки — только уведомление, ничего не списывает."""
     await cb.answer("Оплата пока не подключена", show_alert=True)
+
+
+@router.callback_query(F.data == "menu:plans")
+async def cb_menu_plans(cb: CallbackQuery) -> None:
+    """Показать список тарифов в чате (без открытия WebApp)."""
+    lines = [f"💳 <b>Тарифы {settings.SERVICE_NAME}</b>\n"]
+    for _, p in PLANS.items():
+        lines.append(f"• {p['title']} — <b>{p['price']:.0f} ₽</b>")
+    lines.append(f"\n➕ Доп. устройство: +{DEVICE_PRICE:.0f} ₽/мес")
+    await cb.message.answer("\n".join(lines), parse_mode="HTML")
+    await cb.answer()
+
+
+@router.callback_query(F.data == "menu:access")
+async def cb_menu_access(cb: CallbackQuery) -> None:
+    """Показать статус доступа (аналог /status, но по кнопке)."""
+    async with AsyncSessionLocal() as session:
+        user = await get_or_create_user(
+            session,
+            tg_id=cb.from_user.id,
+            username=cb.from_user.username,
+            full_name=cb.from_user.full_name,
+        )
+        has_active = bool(user.subscription and user.is_subscribed)
+        if has_active:
+            text = (
+                f"✅ <b>Мой доступ</b>\n"
+                f"Тариф: <b>{user.subscription.plan}</b>\n"
+                f"Истекает: {user.subscription.expires_at:%d.%m.%Y}"
+            )
+        else:
+            text = "❌ Подписка не активна. Выбери тариф во вкладке «Тарифы»."
+    await cb.message.answer(text, reply_markup=access_menu_kb(has_active),
+                            parse_mode="HTML")
+    await cb.answer()
+
+
+@router.callback_query(F.data == "menu:help")
+async def cb_menu_help(cb: CallbackQuery) -> None:
+    """Показать краткую справку и ссылку на поддержку."""
+    text = (
+        "ℹ️ <b>Помощь</b>\n\n"
+        "• /start — открыть меню\n"
+        "• /status — статус подписки\n"
+        "• Инструкция по Happ — в мини-приложении\n"
+    )
+    if settings.support_url:
+        text += f"\n💬 Поддержка: {settings.support_url}"
+    await cb.message.answer(text, parse_mode="HTML",
+                            disable_web_page_preview=True)
+    await cb.answer()
 
 
 @router.message(F.web_app_data)

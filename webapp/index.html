@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <title>BlackLotusVPN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    /* ───────── Дизайн-токены ───────── */
+    :root {
+      --bg:        #0a0a0a;
+      --card:      #1a1a1a;
+      --border:    #2a2a2a;
+      --text:      #ffffff;
+      --muted:     #888888;
+      --orange:    #ff6b1a;
+      --purple:    #6a0dad;
+      --orange-glow: rgba(255, 107, 26, 0.25);
+      --purple-glow: rgba(106, 13, 173, 0.35);
+      --ok:        #22c55e;
+    }
+
+    /* ───────── Сброс ───────── */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%,   var(--purple-glow), transparent 42%),
+        radial-gradient(circle at 90% 100%, var(--orange-glow), transparent 45%),
+        var(--bg);
+      padding-bottom: 90px;
+    }
+    button { font-family: inherit; }
+    a { color: inherit; text-decoration: none; }
+
+    /* ───────── Утилита секций ───────── */
+    main { padding: 20px 16px 24px; }
+    .tab { display: none; animation: fade .22s ease; }
+    .tab.active { display: block; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none;} }
+
+    .section-title {
+      font-weight: 700;
+      font-size: 22px;
+      margin-bottom: 14px;
+      letter-spacing: -0.01em;
+    }
+    .muted { color: var(--muted); font-size: 14px; }
+
+    /* ───────── Хедер (главная) ───────── */
+    .hero {
+      text-align: center;
+      padding: 26px 8px 18px;
+    }
+    .hero .logo {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--orange), var(--purple));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .hero .tagline { color: var(--muted); font-size: 14px; }
+
+    /* ───────── Карточки ───────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 14px;
+      transition: transform .15s ease, border-color .15s ease;
+    }
+    .card:hover { border-color: #3a3a3a; }
+    .card h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    /* Статус подписки */
+    .status-row {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 15px; margin-bottom: 12px;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+    .dot.on  { background: var(--ok); box-shadow: 0 0 8px rgba(34,197,94,.6); }
+    .dot.off { background: var(--muted); }
+
+    /* ───────── Кнопки ───────── */
+    .btn {
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px 18px;
+      border-radius: 12px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .12s ease, box-shadow .18s ease, background .15s ease;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--orange), var(--purple));
+      color: #fff;
+      box-shadow: 0 6px 22px var(--orange-glow), 0 4px 20px var(--purple-glow);
+    }
+    .btn-primary:hover { box-shadow: 0 8px 30px var(--orange-glow), 0 6px 30px var(--purple-glow); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--orange); color: var(--orange); }
+
+    /* ───────── Список "почему" ───────── */
+    .why-list { display: grid; gap: 10px; }
+    .why-item {
+      display: flex; align-items: center; gap: 10px;
+      color: var(--text); font-size: 14px;
+    }
+    .why-item .bullet {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--orange); flex-shrink: 0;
+      box-shadow: 0 0 8px var(--orange-glow);
+    }
+
+    /* ───────── Тарифы ───────── */
+    .plan-card {
+      position: relative;
+      padding: 18px;
+      margin-bottom: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+    .plan-card.hot { border-color: var(--orange); }
+    .plan-card.hot::after {
+      content: 'ХИТ';
+      position: absolute;
+      top: 14px; right: 14px;
+      background: var(--orange);
+      color: #000;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+    .plan-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .plan-price {
+      font-size: 28px; font-weight: 800; margin: 4px 0 12px;
+      background: linear-gradient(135deg, var(--orange), var(--purple));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .plan-price small {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      -webkit-text-fill-color: var(--muted);
+    }
+
+    .device-note {
+      padding: 12px 14px;
+      background: rgba(106, 13, 173, 0.10);
+      border: 1px solid var(--purple);
+      border-radius: 12px;
+      font-size: 13px;
+      color: var(--text);
+      margin-top: 4px;
+    }
+    .device-note b { color: var(--orange); }
+
+    /* ───────── Ключи ───────── */
+    .key-card { padding: 16px; }
+    .qr-wrap {
+      background: #fff;
+      padding: 12px;
+      border-radius: 12px;
+      display: flex; justify-content: center;
+      margin-bottom: 12px;
+    }
+    .key-value {
+      font-family: ui-monospace, 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 8px 10px;
+      border-radius: 8px;
+      word-break: break-all;
+      margin-bottom: 10px;
+    }
+    ol.happ-steps { padding-left: 18px; font-size: 14px; line-height: 1.6; }
+    ol.happ-steps li { margin-bottom: 4px; }
+    .mono {
+      font-family: ui-monospace, monospace;
+      background: var(--bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--orange);
+      font-size: 12px;
+    }
+
+    /* ───────── Серверы ───────── */
+    .server-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 8px;
+      transition: border-color .15s ease;
+    }
+    .server-row:hover { border-color: #3a3a3a; }
+    .server-name { font-size: 15px; font-weight: 500; }
+    .server-name .flag { font-size: 20px; margin-right: 8px; }
+    .server-status { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+
+    /* ───────── Профиль ───────── */
+    .profile-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 18px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 16px;
+      margin-bottom: 14px;
+    }
+    .avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--orange), var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 700; color: #fff;
+    }
+    .profile-name { font-size: 16px; font-weight: 600; }
+    .profile-id   { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* ───────── Нижняя навигация ───────── */
+    .tabbar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      background: rgba(10, 10, 10, 0.92);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border);
+      z-index: 10;
+      padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+    }
+    .tabbtn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      padding: 8px 0 6px;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      transition: color .15s ease;
+    }
+    .tabbtn span {
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .tabbtn.active { color: var(--orange); }
+
+    /* ───────── Адаптив ───────── */
+    @media (min-width: 640px) {
+      main { max-width: 560px; margin: 0 auto; }
+      .tabbar { max-width: 560px; margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <main>
+
+    <!-- =============== 1. ГЛАВНАЯ =============== -->
+    <section id="tab-home" class="tab active">
+      <div class="hero">
+        <div class="logo">🖤 BlackLotusVPN</div>
+        <div class="tagline">Быстрый и приватный VPN без цензуры</div>
+      </div>
+
+      <div class="card">
+        <div class="status-row">
+          <span class="dot off" id="home-status-dot"></span>
+          <span id="home-status-text">Нет активной подписки</span>
+        </div>
+        <button class="btn btn-primary" data-goto="plans">Подключить VPN</button>
+      </div>
+
+      <div class="card">
+        <h3>Почему BlackLotusVPN?</h3>
+        <div class="why-list">
+          <div class="why-item"><span class="bullet"></span>Обход блокировок</div>
+          <div class="why-item"><span class="bullet"></span>Высокая скорость</div>
+          <div class="why-item"><span class="bullet"></span>Работает в Happ (iOS/Android/Win/Mac)</div>
+          <div class="why-item"><span class="bullet"></span>Без логов</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============== 2. ТАРИФЫ =============== -->
+    <section id="tab-plans" class="tab">
+      <h2 class="section-title">Тарифы</h2>
+
+      <div class="plan-card">
+        <div class="plan-title">1 устройство / 30 дней</div>
+        <div class="plan-price">150 ₽ <small>/ 30 дн</small></div>
+        <button class="btn btn-primary" data-pay="1m">💳 Оплатить</button>
+      </div>
+
+      <div class="plan-card hot">
+        <div class="plan-title">1 устройство / 90 дней</div>
+        <div class="plan-price">350 ₽ <small>/ 90 дн</small></div>
+        <button class="btn btn-primary" data-pay="3m">💳 Оплатить</button>
+      </div>
+
+      <div class="plan-card">
+        <div class="plan-title">1 устройство / 180 дней</div>
+        <div class="plan-price">600 ₽ <small>/ 180 дн</small></div>
+        <button class="btn btn-primary" data-pay="6m">💳 Оплатить</button>
+      </div>
+
+      <div class="device-note">
+        ➕ <b>Доп. устройство:</b> +75 ₽/мес к любому тарифу
+      </div>
+    </section>
+
+    <!-- =============== 3. МОИ КЛЮЧИ =============== -->
+    <section id="tab-keys" class="tab">
+      <h2 class="section-title">Мои ключи</h2>
+
+      <p class="muted" id="keys-empty" style="margin-bottom: 14px;">
+        У вас пока нет активных ключей. Оформи подписку во вкладке «Тарифы».
+      </p>
+
+      <!-- Пример карточки ключа (заглушка) -->
+      <div class="card key-card">
+        <h3>🇳🇱 Netherlands · пример</h3>
+
+        <div class="qr-wrap">
+          <!-- Инлайновый SVG-«QR» (заглушка). Реальный QR будет генерироваться позже. -->
+          <svg id="qr-demo" width="160" height="160" viewBox="0 0 21 21"
+               xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+            <rect width="21" height="21" fill="#fff"/>
+          </svg>
+        </div>
+
+        <div class="key-value" id="demo-key-value">
+          vless://00000000-0000-0000-0000-000000000000@blacklotus.vpn:443?type=tcp#demo
+        </div>
+
+        <button class="btn btn-ghost" id="btn-copy-key">📋 Скопировать ключ</button>
+      </div>
+
+      <div class="card">
+        <h3>Как подключить в Happ</h3>
+        <ol class="happ-steps">
+          <li>Установи <b>Happ</b> из App Store / Google Play.</li>
+          <li>Скопируй строку <span class="mono">vless://…</span> выше.</li>
+          <li>В Happ: «+» → «Из буфера обмена».</li>
+          <li>Нажми «Подключиться».</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- =============== 4. СЕРВЕРЫ =============== -->
+    <section id="tab-servers" class="tab">
+      <h2 class="section-title">Серверы</h2>
+
+      <div class="server-row">
+        <div class="server-name"><span class="flag">🇩🇪</span>Germany</div>
+        <div class="server-status"><span class="dot on"></span>Online</div>
+      </div>
+      <div class="server-row">
+        <div class="server-name"><span class="flag">🇳🇱</span>Netherlands</div>
+        <div class="server-status"><span class="dot on"></span>Online</div>
+      </div>
+      <div class="server-row">
+        <div class="server-name"><span class="flag">🇫🇮</span>Finland</div>
+        <div class="server-status"><span class="dot on"></span>Online</div>
+      </div>
+      <div class="server-row">
+        <div class="server-name"><span class="flag">🇺🇸</span>USA</div>
+        <div class="server-status"><span class="dot on"></span>Online</div>
+      </div>
+      <div class="server-row">
+        <div class="server-name"><span class="flag">🇹🇷</span>Turkey</div>
+        <div class="server-status"><span class="dot on"></span>Online</div>
+      </div>
+    </section>
+
+    <!-- =============== 5. ПРОФИЛЬ =============== -->
+    <section id="tab-profile" class="tab">
+      <h2 class="section-title">Профиль</h2>
+
+      <div class="profile-header">
+        <div class="avatar" id="profile-avatar">🖤</div>
+        <div>
+          <div class="profile-name" id="profile-name">Гость</div>
+          <div class="profile-id"   id="profile-id">Открой через Telegram</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="status-row">
+          <span class="dot off"></span>
+          <span>Подписка: <b>Неактивна</b></span>
+        </div>
+        <button class="btn btn-primary" id="btn-support">💬 Написать в поддержку</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Нижняя навигация -->
+  <nav class="tabbar">
+    <button class="tabbtn active" data-tab="home">🏠<span>Главная</span></button>
+    <button class="tabbtn"        data-tab="plans">💳<span>Тарифы</span></button>
+    <button class="tabbtn"        data-tab="keys">🔑<span>Ключи</span></button>
+    <button class="tabbtn"        data-tab="servers">🌍<span>Серверы</span></button>
+    <button class="tabbtn"        data-tab="profile">👤<span>Профиль</span></button>
+  </nav>
+
+  <script>
+    // ─────────────────────────────────────────────────────
+    // Инициализация Telegram WebApp SDK
+    // ─────────────────────────────────────────────────────
+    const tg = window.Telegram && window.Telegram.WebApp;
+    // Юзернейм поддержки: замени на свой (или подставь на бэкенде).
+    const SUPPORT_USERNAME = 'pivozavr35';
+
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      tg.setHeaderColor && tg.setHeaderColor('#0a0a0a');
+      tg.setBackgroundColor && tg.setBackgroundColor('#0a0a0a');
+
+      // Применяем тему из Telegram (мы уже тёмные, но перекроем токены,
+      // если Telegram в светлой теме — цвета остаются нашими)
+      const t = tg.themeParams || {};
+      if (t.text_color) document.documentElement.style.setProperty('--text', t.text_color);
+      if (t.hint_color) document.documentElement.style.setProperty('--muted', t.hint_color);
+    }
+
+    // ─────────────────────────────────────────────────────
+    // Табы
+    // ─────────────────────────────────────────────────────
+    const tabs = document.querySelectorAll('.tab');
+    const tabbtns = document.querySelectorAll('.tabbtn');
+
+    function switchTo(name) {
+      tabs.forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
+      tabbtns.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    }
+    tabbtns.forEach(b => b.addEventListener('click', () => switchTo(b.dataset.tab)));
+
+    // Кнопки, которые ведут на другую вкладку
+    document.querySelectorAll('[data-goto]').forEach(btn => {
+      btn.addEventListener('click', () => switchTo(btn.dataset.goto));
+    });
+
+    // ─────────────────────────────────────────────────────
+    // Оплата (заглушка)
+    // ─────────────────────────────────────────────────────
+    document.querySelectorAll('[data-pay]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const label = btn.closest('.plan-card').querySelector('.plan-title').textContent;
+        const msg = `Оплата скоро будет доступна\n\nТариф: ${label}`;
+        if (tg && tg.showAlert) tg.showAlert(msg);
+        else alert(msg);
+      });
+    });
+
+    // ─────────────────────────────────────────────────────
+    // Копирование демо-ключа (заглушка)
+    // ─────────────────────────────────────────────────────
+    document.getElementById('btn-copy-key').addEventListener('click', () => {
+      const val = document.getElementById('demo-key-value').textContent.trim();
+      navigator.clipboard && navigator.clipboard.writeText(val);
+      const msg = 'Ключ скопирован (демо)';
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
+    });
+
+    // ─────────────────────────────────────────────────────
+    // Профиль из initDataUnsafe
+    // ─────────────────────────────────────────────────────
+    (function fillProfile() {
+      const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+      if (!u) return;
+      const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || 'User';
+      document.getElementById('profile-name').textContent = name;
+      document.getElementById('profile-id').textContent   = 'ID: ' + u.id + (u.username ? ' · @' + u.username : '');
+      document.getElementById('profile-avatar').textContent = (name[0] || '🖤').toUpperCase();
+    })();
+
+    // Кнопка "Написать в поддержку"
+    document.getElementById('btn-support').addEventListener('click', () => {
+      const url = 'https://t.me/' + SUPPORT_USERNAME;
+      if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
+      else window.open(url, '_blank');
+    });
+
+    // ─────────────────────────────────────────────────────
+    // Демо-QR: рисуем псевдо-QR из псевдослучайных клеток.
+    // Это исключительно визуальная заглушка — не сканируется как настоящий QR.
+    // ─────────────────────────────────────────────────────
+    (function drawFakeQR() {
+      const svg = document.getElementById('qr-demo');
+      const N = 21; // размер сетки
+      // Детерминированное «случайное» заполнение
+      let seed = 42;
+      const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+      // Тёмные клетки (кроме позиций «finder patterns»)
+      const isFinder = (x, y) =>
+        (x < 7 && y < 7) || (x >= N - 7 && y < 7) || (x < 7 && y >= N - 7);
+      const parts = [];
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          if (isFinder(x, y)) continue;
+          if (rnd() > 0.55) parts.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="#000"/>`);
+        }
+      }
+      // «Finder patterns» — стандартные квадраты по углам
+      const finder = (x, y) => `
+        <rect x="${x}"   y="${y}"   width="7" height="7" fill="#000"/>
+        <rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#fff"/>
+        <rect x="${x+2}" y="${y+2}" width="3" height="3" fill="#000"/>
+      `;
+      svg.innerHTML = `
+        <rect width="${N}" height="${N}" fill="#fff"/>
+        ${parts.join('')}
+        ${finder(0, 0)}
+        ${finder(N - 7, 0)}
+        ${finder(0, N - 7)}
+      `;
+    })();
+  </script>
+</body>
+</html>
