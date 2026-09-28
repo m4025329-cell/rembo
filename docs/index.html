@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BlackLotusVPN</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --card: #1a1a1a;
+  --border: #2a2a2a;
+  --orange: #ff6b1a;
+  --purple: #6a0dad;
+  --text: #ffffff;
+  --text2: #888888;
+  --success: #00c853;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-bottom: 80px;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  padding: 24px 16px 16px;
+  background: linear-gradient(180deg, #1a1a1a 0%, var(--bg) 100%);
+}
+.header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--orange), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.header p {
+  color: var(--text2);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+/* Sections */
+.section { display: none; padding: 0 16px; }
+.section.active { display: block; }
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: transform 0.2s;
+}
+.card:active { transform: scale(0.98); }
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.card-text {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+/* Status badge */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.badge-inactive {
+  background: rgba(255,107,26,0.15);
+  color: var(--orange);
+}
+.badge-active {
+  background: rgba(0,200,83,0.15);
+  color: var(--success);
+}
+
+/* Buttons */
+.btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.btn:active { opacity: 0.8; }
+.btn-primary {
+  background: linear-gradient(135deg, var(--orange), #ff8c42);
+  color: #fff;
+}
+.btn-secondary {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-sm {
+  padding: 10px 16px;
+  font-size: 13px;
+  width: auto;
+}
+
+/* Plan cards */
+.plan-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.plan-card.popular::before {
+  content: "Популярный";
+  position: absolute;
+  top: 12px; right: -28px;
+  background: var(--orange);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 32px;
+  transform: rotate(45deg);
+}
+.plan-price {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--orange);
+}
+.plan-price span {
+  font-size: 14px;
+  color: var(--text2);
+  font-weight: 400;
+}
+.plan-name {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.plan-desc {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 12px;
+}
+
+/* Server list */
+.server-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+}
+.server-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.server-flag { font-size: 24px; }
+.server-name { font-size: 14px; font-weight: 500; }
+.server-country { font-size: 12px; color: var(--text2); }
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.status-dot.offline { background: #f44336; }
+
+/* Features */
+.features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 16px 0;
+}
+.feature {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+.feature-icon { font-size: 24px; margin-bottom: 6px; }
+.feature-text { font-size: 12px; color: var(--text2); }
+
+/* Profile */
+.profile-info {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+}
+.profile-avatar {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--orange), var(--purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin: 0 auto 12px;
+}
+.profile-name { font-size: 18px; font-weight: 600; }
+.profile-id { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+/* Keys */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-text { color: var(--text2); font-size: 14px; }
+
+/* Tab bar */
+.tab-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #111111;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 100;
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.2s;
+}
+.tab.active { color: var(--orange); }
+.tab-icon { font-size: 20px; }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity:0; transform:translateY(10px); }
+  to { opacity:1; transform:translateY(0); }
+}
+.section.active { animation: fadeIn 0.3s ease; }
+
+/* Device addon */
+.addon-card {
+  background: linear-gradient(135deg, rgba(106,13,173,0.15), rgba(255,107,26,0.15));
+  border: 1px solid var(--purple);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 16px;
+  text-align: center;
+}
+.addon-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--purple);
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>BlackLotusVPN</h1>
+  <p>Безопасный доступ к интернету</p>
+</div>
+
+<!-- ГЛАВНАЯ -->
+<div class="section active" id="sec-home">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="card-title">Статус подписки</div>
+      <span class="badge badge-inactive" id="status-badge">Неактивна</span>
+    </div>
+    <div class="card-text">Подключите VPN для безопасного доступа к интернету</div>
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="switchTab('plans')">Подключить VPN</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Почему BlackLotusVPN?</div>
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🔓</div>
+        <div class="feature-text">Обход блокировок</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-text">Высокая скорость</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📱</div>
+        <div class="feature-text">Работает в Happ</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-text">Без логов</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Как подключить?</div>
+    <div class="card-text">
+      1. Выберите тариф и оплатите<br>
+      2. Получите VPN-ключ<br>
+      3. Скачайте Happ<br>
+      4. Вставьте ключ в приложение<br>
+      5. Нажмите "Подключить"
+    </div>
+  </div>
+</div>
+
+<!-- ТАРИФЫ -->
+<div class="section" id="sec-plans">
+  <div class="plan-card">
+    <div class="plan-name">1 устройство / 30 дней</div>
+    <div class="plan-desc">Базовый доступ ко всем серверам</div>
+    <div class="plan-price">150 <span>₽</span></div>
+    <button class="btn btn-primary" style="margin-top:12px;" onclick="buyPlan('30 дней')">Оплатить</button>
+  </div>
+
+  <div class="plan-card popular">
+    <div class="plan-name">1 устройство / 90 дней</div>
+    <div class="plan-desc">Экономия 100 ₽ по сравнению с месячным</div>
+    <div class="plan-price">350 <span>₽</span></div>
+    <button class="btn btn-primary" style="margin-top:12px;" onclick="buyPlan('90 дней')">Оплатить</button>
+  </div>
+
+  <div class="plan-card">
+    <div class="plan-name">1 устройство / 180 дней</div>
+    <div class="plan-desc">Лучшая цена — всего 100 ₽/мес</div>
+    <div class="plan-price">600 <span>₽</span></div>
+    <button class="btn btn-primary" style="margin-top:12px;" onclick="buyPlan('180 дней')">Оплатить</button>
+  </div>
+
+  <div class="addon-card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Доп. устройство</div>
+    <div class="addon-price">+75 ₽/мес</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:4px;">За каждое дополнительное устройство</div>
+  </div>
+</div>
+
+<!-- МОИ КЛЮЧИ -->
+<div class="section" id="sec-keys">
+  <div class="empty-state">
+    <div class="empty-icon">🔑</div>
+    <div class="card-title" style="margin-bottom:8px;">Нет активных ключей</div>
+    <div class="empty-text">Выберите тариф, чтобы получить VPN-ключ</div>
+    <button class="btn btn-primary" style="margin-top:16px;width:auto;padding:12px 32px;" onclick="switchTab('plans')">Выбрать тариф</button>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="card-title">Как подключить ключ в Happ?</div>
+    <div class="card-text">
+      <b>iOS / Android:</b><br>
+      1. Скачайте Happ из App Store / Google Play<br>
+      2. Нажмите "+" или "Импорт"<br>
+      3. Вставьте VLESS-ключ или отсканируйте QR<br>
+      4. Нажмите на сервер для подключения<br><br>
+      <b>Windows / macOS:</b><br>
+      1. Скачайте Happ с официального сайта<br>
+      2. Установите и откройте<br>
+      3. Импортируйте ключ через буфер обмена<br>
+      4. Подключитесь
+    </div>
+  </div>
+</div>
+
+<!-- СЕРВЕРЫ -->
+<div class="section" id="sec-servers">
+  <div class="server-item">
+    <div class="server-info">
+      <span class="server-flag">🇩🇪</span>
+      <div>
+        <div class="server-name">Germany</div>
+        <div class="server-country">Франкфурт</div>
+      </div>
+    </div>
+    <div class="status-dot"></div>
+  </div>
+  <div class="server-item">
+    <div class="server-info">
+      <span class="server-flag">🇳🇱</span>
+      <div>
+        <div class="server-name">Netherlands</div>
+        <div class="server-country">Амстердам</div>
+      </div>
+    </div>
+    <div class="status-dot"></div>
+  </div>
+  <div class="server-item">
+    <div class="server-info">
+      <span class="server-flag">🇫🇮</span>
+      <div>
+        <div class="server-name">Finland</div>
+        <div class="server-country">Хельсинки</div>
+      </div>
+    </div>
+    <div class="status-dot"></div>
+  </div>
+  <div class="server-item">
+    <div class="server-info">
+      <span class="server-flag">🇺🇸</span>
+      <div>
+        <div class="server-name">USA</div>
+        <div class="server-country">Нью-Йорк</div>
+      </div>
+    </div>
+    <div class="status-dot"></div>
+  </div>
+  <div class="server-item">
+    <div class="server-info">
+      <span class="server-flag">🇹🇷</span>
+      <div>
+        <div class="server-name">Turkey</div>
+        <div class="server-country">Стамбул</div>
+      </div>
+    </div>
+    <div class="status-dot"></div>
+  </div>
+</div>
+
+<!-- ПРОФИЛЬ -->
+<div class="section" id="sec-profile">
+  <div class="profile-info">
+    <div class="profile-avatar" id="profile-avatar">👤</div>
+    <div class="profile-name" id="profile-name">Пользователь</div>
+    <div class="profile-id" id="profile-id">ID: —</div>
+    <span class="badge badge-inactive" style="margin-top:12px;">Подписка неактивна</span>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <div class="card-title">Аккаунт</div>
+    <div class="card-text">
+      Данные используются только для работы сервиса. Мы не храним логи подключений.
+    </div>
+  </div>
+
+  <button class="btn btn-secondary" style="margin-top:12px;" onclick="openSupport()">Написать в поддержку</button>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('home')" id="tab-home">
+    <span class="tab-icon">🏠</span>
+    Главная
+  </button>
+  <button class="tab" onclick="switchTab('plans')" id="tab-plans">
+    <span class="tab-icon">💳</span>
+    Тарифы
+  </button>
+  <button class="tab" onclick="switchTab('keys')" id="tab-keys">
+    <span class="tab-icon">🔑</span>
+    Ключи
+  </button>
+  <button class="tab" onclick="switchTab('servers')" id="tab-servers">
+    <span class="tab-icon">🌍</span>
+    Серверы
+  </button>
+  <button class="tab" onclick="switchTab('profile')" id="tab-profile">
+    <span class="tab-icon">👤</span>
+    Профиль
+  </button>
+</div>
+
+<script>
+// Инициализация Telegram WebApp
+const tg = window.Telegram && window.Telegram.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  // Заполняем профиль данными пользователя
+  const user = tg.initDataUnsafe && tg.initDataUnsafe.user;
+  if (user) {
+    document.getElementById('profile-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+    document.getElementById('profile-id').textContent = 'ID: ' + user.id;
+    document.getElementById('profile-avatar').textContent = user.first_name ? user.first_name.charAt(0).toUpperCase() : '👤';
+  }
+}
+
+// Переключение табов
+function switchTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// Заглушка оплаты
+function buyPlan(plan) {
+  if (tg && tg.showAlert) {
+    tg.showAlert('Оплата тарифа "' + plan + '" скоро будет доступна!');
+  } else {
+    alert('Оплата тарифа "' + plan + '" скоро будет доступна!');
+  }
+}
+
+// Поддержка
+function openSupport() {
+  if (tg && tg.openTelegramLink) {
+    tg.openTelegramLink('https://t.me/Slavaprivet');
+  } else {
+    window.open('https://t.me/Slavaprivet', '_blank');
+  }
+}
+</script>
+
+</body>
+</html>
