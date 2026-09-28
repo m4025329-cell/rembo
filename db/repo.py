@@ -1,0 +1,181 @@
+"""
+Слой доступа к данным (репозиторий).
+Здесь собраны функции, которыми пользуется и бот, и веб-приложение.
+"""
+from datetime import datetime, timedelta
+from uuid import uuid4
+
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from db.models import User, Subscription, VPNKey, SupportMessage
+
+
+# Тарифы: длительность (дни) и цена (рубли) — заглушки
+PLANS = {
+    "1m": {"days": 30, "price": 199.0, "title": "1 месяц"},
+    "3m": {"days": 90, "price": 499.0, "title": "3 месяца"},
+    "12m": {"days": 365, "price": 1499.0, "title": "12 месяцев"},
+}
+
+# Список серверов (hardcode-заглушка)
+SERVERS = [
+    {"code": "nl", "name": "Нидерланды", "flag": "🇳🇱"},
+    {"code": "de", "name": "Германия", "flag": "🇩🇪"},
+    {"code": "us", "name": "США", "flag": "🇺🇸"},
+    {"code": "fi", "name": "Финляндия", "flag": "🇫🇮"},
+    {"code": "jp", "name": "Япония", "flag": "🇯🇵"},
+]
+
+
+# ------------------------- Пользователи -------------------------
+
+async def get_or_create_user(
+    session: AsyncSession,
+    tg_id: int,
+    username: str | None = None,
+    full_name: str | None = None,
+) -> User:
+    """Вернуть пользователя по tg_id, создав если ещё нет."""
+    result = await session.execute(
+        select(User)
+        .where(User.tg_id == tg_id)
+        .options(selectinload(User.subscription))
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(tg_id=tg_id, username=username, full_name=full_name)
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+    return user
+
+
+async def get_user_by_tg_id(session: AsyncSession, tg_id: int) -> User | None:
+    """Найти пользователя по Telegram id (без создания)."""
+    result = await session.execute(
+        select(User)
+        .where(User.tg_id == tg_id)
+        .options(selectinload(User.subscription), selectinload(User.keys))
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_all_user_ids(session: AsyncSession) -> list[int]:
+    """Все Telegram-ID для рассылки."""
+    result = await session.execute(select(User.tg_id).where(User.is_banned == False))  # noqa: E712
+    return [row[0] for row in result.all()]
+
+
+# ------------------------- Подписки -------------------------
+
+async def grant_subscription(
+    session: AsyncSession,
+    user: User,
+    plan: str,
+    price: float | None = None,
+) -> Subscription:
+    """Активировать подписку пользователю на указанный план."""
+    if plan not in PLANS:
+        raise ValueError(f"Неизвестный тариф: {plan}")
+    days = PLANS[plan]["days"]
+    price = PLANS[plan]["price"] if price is None else price
+
+    now = datetime.utcnow()
+    expires = now + timedelta(days=days)
+
+    if user.subscription:
+        # Продлеваем существующую подписку
+        user.subscription.plan = plan
+        user.subscription.started_at = now
+        user.subscription.expires_at = expires
+        user.subscription.price = price
+    else:
+        sub = Subscription(
+            user_id=user.id,
+            plan=plan,
+            started_at=now,
+            expires_at=expires,
+            price=price,
+        )
+        session.add(sub)
+        user.subscription = sub
+
+    user.is_subscribed = True
+    await session.commit()
+    await session.refresh(user)
+    return user.subscription
+
+
+async def revoke_subscription(session: AsyncSession, user: User) -> None:
+    """Отозвать подписку у пользователя."""
+    if user.subscription:
+        await session.delete(user.subscription)
+    user.is_subscribed = False
+    await session.commit()
+
+
+# ------------------------- VPN-ключи -------------------------
+
+async def generate_key(
+    session: AsyncSession,
+    user: User,
+    country: str,
+) -> VPNKey:
+    """
+    Заглушка генерации VPN-ключа.
+    Возвращает случайный UUID; в реальности здесь будет запрос к панели VPN.
+    """
+    key = VPNKey(
+        user_id=user.id,
+        country=country,
+        key_value=f"vless://{uuid4()}@blacklotus.vpn:443?type=tcp#{country}",
+    )
+    session.add(key)
+    await session.commit()
+    await session.refresh(key)
+    return key
+
+
+async def list_keys(session: AsyncSession, user: User) -> list[VPNKey]:
+    """Все ключи пользователя, свежие вверху."""
+    result = await session.execute(
+        select(VPNKey).where(VPNKey.user_id == user.id).order_by(VPNKey.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+# ------------------------- Поддержка -------------------------
+
+async def add_support_message(
+    session: AsyncSession, user: User, text: str
+) -> SupportMessage:
+    """Сохранить обращение в поддержку."""
+    msg = SupportMessage(user_id=user.id, text=text)
+    session.add(msg)
+    await session.commit()
+    await session.refresh(msg)
+    return msg
+
+
+# ------------------------- Статистика -------------------------
+
+async def stats(session: AsyncSession) -> dict:
+    """Основные цифры для /admin."""
+    total_users = (await session.execute(select(func.count(User.id)))).scalar_one()
+    active_subs = (
+        await session.execute(
+            select(func.count(Subscription.id)).where(
+                Subscription.expires_at > datetime.utcnow()
+            )
+        )
+    ).scalar_one()
+    revenue = (
+        await session.execute(select(func.coalesce(func.sum(Subscription.price), 0)))
+    ).scalar_one()
+    return {
+        "users": total_users,
+        "active_subs": active_subs,
+        "revenue": float(revenue or 0.0),
+    }

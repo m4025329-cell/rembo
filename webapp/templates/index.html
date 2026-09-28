@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BlackLotusVPN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <!-- Атмосферные декоры -->
+  <div class="bg-decor">
+    <svg class="bat bat-1" viewBox="0 0 64 32"><use href="/static/img/icons.svg#bat"/></svg>
+    <svg class="bat bat-2" viewBox="0 0 64 32"><use href="/static/img/icons.svg#bat"/></svg>
+    <svg class="ghost ghost-1" viewBox="0 0 32 40"><use href="/static/img/icons.svg#ghost"/></svg>
+  </div>
+
+  <header class="app-header">
+    <svg class="logo" viewBox="0 0 64 64"><use href="/static/img/icons.svg#lotus"/></svg>
+    <h1 class="title">BlackLotusVPN</h1>
+    <p class="subtitle">Тёмный лотос свободного интернета</p>
+  </header>
+
+  <!-- Секции -->
+  <main>
+    <!-- Главная -->
+    <section id="tab-home" class="tab active">
+      <div class="card">
+        <h2>Статус подписки</h2>
+        <div id="sub-status" class="sub-status">Загрузка…</div>
+        <div class="server-picker">
+          <label for="server-select">🕯 Сервер:</label>
+          <select id="server-select"></select>
+        </div>
+        <button id="btn-get-key" class="btn btn-primary">🗝 Получить ключ</button>
+      </div>
+    </section>
+
+    <!-- Тарифы -->
+    <section id="tab-plans" class="tab">
+      <h2 class="section-title">Тарифы</h2>
+      <div id="plans-list" class="plans-list"></div>
+    </section>
+
+    <!-- Мои ключи -->
+    <section id="tab-keys" class="tab">
+      <h2 class="section-title">Мои ключи</h2>
+      <div id="keys-list" class="keys-list">
+        <p class="muted">Ключей пока нет.</p>
+      </div>
+    </section>
+
+    <!-- Инструкция -->
+    <section id="tab-help" class="tab">
+      <h2 class="section-title">Как подключиться в Happ</h2>
+      <div class="card">
+        <h3>1. Установи Happ</h3>
+        <ul class="platforms">
+          <li>📱 <b>iOS</b>: App Store → «Happ»</li>
+          <li>🤖 <b>Android</b>: Google Play → «Happ»</li>
+          <li>🪟 <b>Windows</b>: <span class="mono">happ.tools/win</span></li>
+          <li>🍎 <b>macOS</b>: <span class="mono">happ.tools/mac</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>2. Импортируй ключ</h3>
+        <ol>
+          <li>Открой раздел «Мои ключи» и скопируй строку вида <span class="mono">vless://…</span></li>
+          <li>В Happ нажми «+» → «Из буфера обмена».</li>
+          <li>Нажми «Подключиться». Готово 🎃</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Поддержка -->
+    <section id="tab-support" class="tab">
+      <h2 class="section-title">Поддержка</h2>
+      <div class="card">
+        <p>Опиши проблему — сообщение придёт нашему призраку-админу 👻</p>
+        <textarea id="support-text" rows="5" placeholder="Твоё сообщение..."></textarea>
+        <button id="btn-support" class="btn btn-primary">Отправить</button>
+        <p id="support-status" class="muted"></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Нижняя навигация -->
+  <nav class="tabbar">
+    <button class="tabbtn active" data-tab="home">🖤<span>Главная</span></button>
+    <button class="tabbtn" data-tab="plans">💜<span>Тарифы</span></button>
+    <button class="tabbtn" data-tab="keys">🗝<span>Ключи</span></button>
+    <button class="tabbtn" data-tab="help">📖<span>Инструкция</span></button>
+    <button class="tabbtn" data-tab="support">👻<span>Помощь</span></button>
+  </nav>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+"""
+ORM-модели SQLAlchemy для BlackLotusVPN.
+Три сущности:
+- User        — Telegram-пользователь
+- Subscription — активная подписка (один-к-одному с User)
+- VPNKey      — сгенерированные VPN-ключи
+- SupportMessage — сообщения из формы поддержки
+"""
+from datetime import datetime
+from sqlalchemy import String, Integer, DateTime, Boolean, ForeignKey, Text, Float
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    """Базовый класс для всех моделей."""
+    pass
+
+
+class User(Base):
+    """Пользователь Telegram-бота."""
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Telegram user_id — уникальный идентификатор пользователя в TG
+    tg_id: Mapped[int] = mapped_column(Integer, unique=True, index=True)
+    username: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    full_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Дата первой регистрации в боте
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Флаг активной подписки (упрощённо; детали в Subscription)
+    is_subscribed: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Забанен ли пользователь администратором
+    is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    subscription: Mapped["Subscription | None"] = relationship(
+        back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    keys: Mapped[list["VPNKey"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class Subscription(Base):
+    """Подписка пользователя на VPN."""
+    __tablename__ = "subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
+    # План: 1m / 3m / 12m
+    plan: Mapped[str] = mapped_column(String(16))
+    # Дата активации подписки
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Дата окончания
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    # Сколько заплатил (для статистики дохода)
+    price: Mapped[float] = mapped_column(Float, default=0.0)
+
+    user: Mapped[User] = relationship(back_populates="subscription")
+
+
+class VPNKey(Base):
+    """Сгенерированный VPN-ключ."""
+    __tablename__ = "vpn_keys"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # Название страны/сервера
+    country: Mapped[str] = mapped_column(String(64))
+    # Сам ключ (пока UUID-заглушка)
+    key_value: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped[User] = relationship(back_populates="keys")
+
+
+class SupportMessage(Base):
+    """Сообщение из формы поддержки в мини-приложении."""
+    __tablename__ = "support_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
