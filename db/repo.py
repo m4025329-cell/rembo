@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from db.models import User, Subscription, VPNKey, SupportMessage
+from security.crypto import encrypt, try_decrypt
 
 
 # Тарифы: длительность (дни) и цена (рубли) — заглушки
@@ -126,11 +127,14 @@ async def generate_key(
     """
     Заглушка генерации VPN-ключа.
     Возвращает случайный UUID; в реальности здесь будет запрос к панели VPN.
+
+    Значение ключа шифруется Fernet перед сохранением в БД.
     """
+    plaintext = f"vless://{uuid4()}@blacklotus.vpn:443?type=tcp#{country}"
     key = VPNKey(
         user_id=user.id,
         country=country,
-        key_value=f"vless://{uuid4()}@blacklotus.vpn:443?type=tcp#{country}",
+        key_value=encrypt(plaintext),
     )
     session.add(key)
     await session.commit()
@@ -139,11 +143,15 @@ async def generate_key(
 
 
 async def list_keys(session: AsyncSession, user: User) -> list[VPNKey]:
-    """Все ключи пользователя, свежие вверху."""
+    """Все ключи пользователя, свежие вверху. Значения дешифруются на лету."""
     result = await session.execute(
         select(VPNKey).where(VPNKey.user_id == user.id).order_by(VPNKey.created_at.desc())
     )
-    return list(result.scalars().all())
+    keys = list(result.scalars().all())
+    # try_decrypt устойчив к legacy-строкам (не зашифрованным)
+    for k in keys:
+        k.key_value = try_decrypt(k.key_value)
+    return keys
 
 
 # ------------------------- Поддержка -------------------------

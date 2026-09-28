@@ -1,0 +1,17 @@
+# Uptime Kuma для мониторинга бота, API мини-приложения и VPN-панели.
+# Запуск: docker compose -f monitoring/docker-compose.yml up -d
+# Веб-интерфейс: http://<host>:3001 (перед публикацией — за nginx + basic auth).
+version: "3.9"
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: blacklotus-uptime
+    restart: unless-stopped
+    volumes:
+      - kuma-data:/app/data
+    ports:
+      - "127.0.0.1:3001:3001"    # bind только localhost; наружу через reverse-proxy
+
+volumes:
+  kuma-data:

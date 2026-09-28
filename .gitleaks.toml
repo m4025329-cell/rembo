@@ -1,0 +1,37 @@
+# Кастомные правила gitleaks для BlackLotusVPN
+title = "BlackLotusVPN gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "tg-bot-token"
+description = "Telegram bot token (<id>:<hash>)"
+regex = '''(?i)\b[0-9]{9,10}:[A-Za-z0-9_\-]{35}\b'''
+tags = ["telegram", "secret"]
+
+[[rules]]
+id = "fernet-key"
+description = "Fernet key (base64, 44 chars, ends with =)"
+regex = '''\b[A-Za-z0-9_\-]{43}=\b'''
+tags = ["fernet", "secret"]
+
+[[rules]]
+id = "vless-uri"
+description = "VLESS/VMess subscription URI"
+regex = '''(vless|vmess)://[A-Za-z0-9@:./?&=%_\-#]{20,}'''
+tags = ["vpn", "leak"]
+
+# Игнорим свои же примеры/плейсхолдеры
+[allowlist]
+description = "Плейсхолдеры и примеры"
+paths = [
+    '''\.env\.example$''',
+    '''SECURITY\.md$''',
+    '''docs/.*\.md$''',
+    '''README\.md$''',
+]
+regexes = [
+    '''REPLACE_WITH_.*''',
+    '''(?i)your[-_ ]?(bot[-_ ]?)?token''',
+]

@@ -66,8 +66,8 @@ class VPNKey(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     # Название страны/сервера
     country: Mapped[str] = mapped_column(String(64))
-    # Сам ключ (пока UUID-заглушка)
-    key_value: Mapped[str] = mapped_column(String(128))
+    # Сам ключ, зашифрован Fernet (base64-токен ~400 симв.)
+    key_value: Mapped[str] = mapped_column(String(1024))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped[User] = relationship(back_populates="keys")

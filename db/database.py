@@ -1,7 +1,14 @@
 """
 Инициализация асинхронного движка SQLAlchemy и session-factory.
-Также содержит миграцию create_all() для MVP (без Alembic).
+
+Дополнительно:
+- директория БД создаётся вне репозитория (db-data/);
+- на SQLite-файл ставим chmod 600 (только владелец).
 """
+import logging
+import os
+from pathlib import Path
+
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -12,14 +19,14 @@ from config import settings
 from db.models import Base
 
 
-# Асинхронный движок SQLAlchemy
+logger = logging.getLogger("blacklotus.db")
+
 engine = create_async_engine(
     settings.async_database_url,
     echo=False,
     future=True,
 )
 
-# Фабрика сессий — используется во всех местах, где нужен доступ к БД
 AsyncSessionLocal = async_sessionmaker(
     engine,
     class_=AsyncSession,
@@ -27,13 +34,28 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
+def _harden_sqlite_file() -> None:
+    """Создать каталог БД и выставить права 600 на SQLite-файл."""
+    path: Path | None = settings.sqlite_path
+    if not path:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        try:
+            os.chmod(path, 0o600)
+        except PermissionError:
+            logger.warning("Не удалось выставить 600 на %s", path)
+
+
 async def init_db() -> None:
-    """Создать все таблицы. Вызывается при старте бота и вебапа."""
+    """Создать таблицы (без Alembic — MVP) и защитить файл БД."""
+    _harden_sqlite_file()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    _harden_sqlite_file()  # повторно, потому что файл только что создан
 
 
 async def get_session() -> AsyncSession:
-    """Dependency-функция для FastAPI: выдаёт сессию БД."""
+    """FastAPI dependency."""
     async with AsyncSessionLocal() as session:
         yield session

@@ -1,10 +1,11 @@
 """
 Админка внутри бота.
-Команда /admin, доступ только по ADMIN_ID из .env.
+Команда /admin, доступ только по ADMIN_ID из .env (через @admin_only).
 Возможности:
 - статистика (юзеры, активные подписки, доход);
 - рассылка всем пользователям;
 - выдача/отзыв подписки вручную (по tg_id).
+Все действия пишутся в audit.log.
 """
 import asyncio
 
@@ -14,7 +15,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
 
-from config import settings
 from db.database import AsyncSessionLocal
 from db.repo import (
     stats,
@@ -24,16 +24,13 @@ from db.repo import (
     revoke_subscription,
     PLANS,
 )
+from security.logging_setup import audit
 
 from .keyboards import admin_menu_kb
+from .security import admin_only
 
 
 router = Router(name="admin")
-
-
-def is_admin(user_id: int) -> bool:
-    """Проверка админских прав по ADMIN_ID."""
-    return user_id == settings.ADMIN_ID
 
 
 class AdminStates(StatesGroup):
@@ -44,10 +41,10 @@ class AdminStates(StatesGroup):
 
 
 @router.message(Command("admin"))
+@admin_only
 async def cmd_admin(message: Message) -> None:
     """/admin — показать меню (только для владельца)."""
-    if message.from_user is None or not is_admin(message.from_user.id):
-        return
+    audit(message.from_user.id, "admin_open")
     await message.answer("🛠 <b>Админ-панель</b>", reply_markup=admin_menu_kb(),
                          parse_mode="HTML")
 
@@ -55,10 +52,8 @@ async def cmd_admin(message: Message) -> None:
 # ---------- Статистика ----------
 
 @router.callback_query(F.data == "admin:stats")
+@admin_only
 async def cb_stats(cb: CallbackQuery) -> None:
-    if not is_admin(cb.from_user.id):
-        await cb.answer("Нет доступа", show_alert=True)
-        return
     async with AsyncSessionLocal() as session:
         s = await stats(session)
     text = (
@@ -67,6 +62,7 @@ async def cb_stats(cb: CallbackQuery) -> None:
         f"💎 Активных подписок: <b>{s['active_subs']}</b>\n"
         f"💰 Общий доход: <b>{s['revenue']:.2f} ₽</b>"
     )
+    audit(cb.from_user.id, "admin_stats_view")
     await cb.message.answer(text, parse_mode="HTML")
     await cb.answer()
 
@@ -74,22 +70,22 @@ async def cb_stats(cb: CallbackQuery) -> None:
 # ---------- Рассылка ----------
 
 @router.callback_query(F.data == "admin:broadcast")
+@admin_only
 async def cb_broadcast(cb: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin(cb.from_user.id):
-        await cb.answer("Нет доступа", show_alert=True)
-        return
     await state.set_state(AdminStates.waiting_broadcast)
     await cb.message.answer("Отправь текст рассылки (или /cancel).")
     await cb.answer()
 
 
 @router.message(AdminStates.waiting_broadcast, Command("cancel"))
+@admin_only
 async def broadcast_cancel(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer("Рассылка отменена.")
 
 
 @router.message(AdminStates.waiting_broadcast)
+@admin_only
 async def broadcast_send(message: Message, state: FSMContext, bot: Bot) -> None:
     """Массовая рассылка. Ошибки (заблокировали бота и т.п.) — просто игнорим."""
     text = message.html_text
@@ -108,16 +104,16 @@ async def broadcast_send(message: Message, state: FSMContext, bot: Bot) -> None:
         await asyncio.sleep(0.05)
 
     await state.clear()
+    audit(message.from_user.id, "broadcast", ok=ok, fail=fail,
+          length=len(text or ""))
     await message.answer(f"✅ Отправлено: {ok}\n❌ Не удалось: {fail}")
 
 
 # ---------- Выдать подписку ----------
 
 @router.callback_query(F.data == "admin:grant")
+@admin_only
 async def cb_grant(cb: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin(cb.from_user.id):
-        await cb.answer("Нет доступа", show_alert=True)
-        return
     await state.set_state(AdminStates.waiting_grant)
     await cb.message.answer(
         "Отправь в формате: <code>&lt;tg_id&gt; &lt;plan&gt;</code>\n"
@@ -129,6 +125,7 @@ async def cb_grant(cb: CallbackQuery, state: FSMContext) -> None:
 
 
 @router.message(AdminStates.waiting_grant)
+@admin_only
 async def grant_process(message: Message, state: FSMContext) -> None:
     parts = (message.text or "").strip().split()
     if len(parts) != 2:
@@ -153,6 +150,7 @@ async def grant_process(message: Message, state: FSMContext) -> None:
         sub = await grant_subscription(session, user, plan)
 
     await state.clear()
+    audit(message.from_user.id, "grant", target=tg_id, plan=plan)
     await message.answer(
         f"✅ Подписка выдана.\nПользователь: <code>{tg_id}</code>\n"
         f"Тариф: {plan}\nДо: {sub.expires_at:%d.%m.%Y}",
@@ -163,16 +161,15 @@ async def grant_process(message: Message, state: FSMContext) -> None:
 # ---------- Отозвать подписку ----------
 
 @router.callback_query(F.data == "admin:revoke")
+@admin_only
 async def cb_revoke(cb: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin(cb.from_user.id):
-        await cb.answer("Нет доступа", show_alert=True)
-        return
     await state.set_state(AdminStates.waiting_revoke)
     await cb.message.answer("Пришли tg_id пользователя, у которого отозвать подписку.")
     await cb.answer()
 
 
 @router.message(AdminStates.waiting_revoke)
+@admin_only
 async def revoke_process(message: Message, state: FSMContext) -> None:
     try:
         tg_id = int((message.text or "").strip())
@@ -186,5 +183,6 @@ async def revoke_process(message: Message, state: FSMContext) -> None:
             return
         await revoke_subscription(session, user)
     await state.clear()
+    audit(message.from_user.id, "revoke", target=tg_id)
     await message.answer(f"🚫 Подписка отозвана у <code>{tg_id}</code>.",
                          parse_mode="HTML")

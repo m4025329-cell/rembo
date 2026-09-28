@@ -1,29 +1,80 @@
-# Секреты
+# =========================================================
+# BlackLotusVPN — приватный код. Никогда не коммить секреты!
+# =========================================================
+
+# ── Секреты и конфиги ────────────────────────────────────
 .env
 .env.*
 !.env.example
+config.local.*
+*.key
+*.pem
+*.gpg
+*.enc
+secrets/
+!secrets/.gitkeep
 
-# База
+# ── База данных ──────────────────────────────────────────
 *.db
+*.sqlite
 *.sqlite3
 db-data/
 db/*.db
+db/*.sqlite*
 
-# Питон
+# ── VPN-сервер ───────────────────────────────────────────
+vpn-server/keys/*
+vpn-server/backups/
+vpn-server/.state/
+!vpn-server/keys/.gitkeep
+
+# ── Логи и бэкапы ────────────────────────────────────────
+*.log
+logs/
+backups/
+audit.log
+!logs/.gitkeep
+
+# ── Python ───────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pyz
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
 .venv/
 venv/
 env/
-.eggs/
-*.egg-info/
-dist/
-build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.tox/
 
-# IDE
+# ── Obfuscation ──────────────────────────────────────────
+pyarmor_dist/
+dist_obf/
+.pyarmor/
+
+# ── IDE / OS ─────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
+*.swo
 .DS_Store
+Thumbs.db
+
+# ── Node (для obfuscation JS) ────────────────────────────
+node_modules/
+package-lock.json
+
+# ── Docker ───────────────────────────────────────────────
+docker/.data/
+
+# ── Claude Code (локальные настройки клиента) ────────────
+.claude/

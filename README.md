@@ -1,5 +1,12 @@
 # 🖤 BlackLotusVPN
 
+## ⚠️ Приватный код, все права защищены
+
+**Copyright © 2026 BlackLotusVPN.** Проект является проприетарным.
+Запрещено копировать, использовать, распространять и модифицировать код
+без письменного разрешения правообладателя. Полный текст — в
+[`LICENSE.md`](LICENSE.md). Политика безопасности — в [`SECURITY.md`](SECURITY.md).
+
 Telegram-бот + мини-приложение для продажи VPN-подписок. Тёмная Halloween-тема: чёрный лотос, оранжевые всполохи, фиолетовое свечение и призраки.
 
 Стек:
@@ -168,5 +175,35 @@ server {
 - **Генерация ключей**: `db/repo.py::generate_key` → вызовы к панели VPN (3x-ui, Marzban, Sing-box API).
 - **Список серверов**: `db/repo.py::SERVERS` — сейчас hardcode, потом можно вытаскивать из панели.
 - **Миграции**: для MVP используется `Base.metadata.create_all`. При росте схемы — переезд на Alembic.
+
+---
+
+## 🔒 Безопасность и правила коммитинга
+
+Полная политика — [`docs/SECURITY.md`](docs/SECURITY.md), реагирование — [`docs/INCIDENT_RESPONSE.md`](docs/INCIDENT_RESPONSE.md), бэкапы — [`docs/BACKUP.md`](docs/BACKUP.md).
+
+Кратко:
+
+- **Никогда не коммить**: `.env`, `*.db`, `*.log`, `*.key`, `*.pem`, `config.local.*`, `vpn-server/keys/*`. Всё в `.gitignore`.
+- **Перед первым коммитом** установи pre-commit хуки:
+
+  ```bash
+  bash scripts/install-precommit.sh
+  ```
+
+  `gitleaks` + `detect-secrets` завернут коммит с любым секретом.
+
+- **Секреты только через `.env`** — `config.py` валидирует и падает при отсутствии `BOT_TOKEN`, `ADMIN_ID`, `FERNET_KEY`, `JWT_SECRET`, `WEBAPP_URL`.
+- **Генерация FERNET_KEY**:
+
+  ```bash
+  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+  ```
+
+- **Прод-режим**: `DEBUG=false`, `WEBAPP_URL` только по HTTPS, `ALLOWED_ORIGIN` == домен WebApp.
+- **VPN-сервер**: разверни через `vpn-server/setup-server.sh` (SSH только по ключу, UFW, fail2ban, unattended-upgrades). Порт панели 3x-ui случайный 40000–50000.
+- **Бэкапы**: `bash scripts/backup.sh` (GPG-шифрование). Крон-строка в `docs/BACKUP.md`.
+- **Обфускация**: `bash scripts/obfuscate.sh` (pyarmor + terser + javascript-obfuscator).
+- **Мониторинг**: Uptime Kuma — `docker compose -f monitoring/docker-compose.yml up -d`.
 
 Happy Halloween 🎃🖤
