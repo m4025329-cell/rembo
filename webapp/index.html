@@ -546,11 +546,57 @@
       .topbar, .tabbar { max-width: 560px; margin: 0 auto; }
       .tabbar { left: 50%; transform: translateX(-50%); }
     }
+
+    /* ═══════════════════════ Ripple-эффект нажатия ═══════════════════════ */
+    .ripple { position: relative; overflow: hidden; }
+    .ripple-wave {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.18);
+      transform: scale(0);
+      animation: rippleAnim .6s ease-out;
+      pointer-events: none;
+    }
+    @keyframes rippleAnim { to { transform: scale(2.6); opacity: 0; } }
+
+    /* ═══════════════════════ Toast-уведомления ═══════════════════════ */
+    .toast {
+      position: fixed;
+      top: max(14px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%) translateY(-140%);
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: var(--card-2);
+      border: 1px solid var(--border-hi);
+      box-shadow: 0 12px 32px -10px rgba(0,0,0,.6);
+      font-size: 13.5px; font-weight: 600;
+      white-space: nowrap;
+      z-index: 100;
+      pointer-events: none;
+      transition: transform .4s var(--ease);
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast svg { width: 16px; height: 16px; color: var(--orange-soft); flex-shrink: 0; }
+
+    /* ═══════════════════════ Уважение к prefers-reduced-motion ═══════════════════════ */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
 </head>
 <body>
 
   <!-- ═══════════════════════ Шапка ═══════════════════════ -->
+  <!-- Toast-уведомление (заменяет alert для не блокирующих сообщений) -->
+  <div class="toast" id="toast"></div>
+
   <header class="topbar">
     <div class="brand">
       <div class="brand-mark">
@@ -958,14 +1004,48 @@
     });
 
     // ─────────────────────────────────────────────────────
+    // Toast-уведомление: лёгкая ненавязчивая замена alert()
+    // ─────────────────────────────────────────────────────
+    let toastTimer = null;
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      toast.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span></span>';
+      toast.querySelector('span').textContent = text;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+    }
+
+    // ─────────────────────────────────────────────────────
+    // Ripple-эффект нажатия на кнопках и карточках
+    // ─────────────────────────────────────────────────────
+    document.querySelectorAll('.btn, .plan-card, .server-row, .action-card, .list-row')
+      .forEach(el => el.classList.add('ripple'));
+
+    document.addEventListener('click', (e) => {
+      const el = e.target.closest('.ripple');
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height) * 2;
+      const wave = document.createElement('span');
+      wave.className = 'ripple-wave';
+      wave.style.width = wave.style.height = size + 'px';
+      wave.style.left = (e.clientX - rect.left - size / 2) + 'px';
+      wave.style.top  = (e.clientY - rect.top  - size / 2) + 'px';
+      el.appendChild(wave);
+      wave.addEventListener('animationend', () => wave.remove());
+    });
+
+    // ─────────────────────────────────────────────────────
     // Оплата (заглушка)
     // ─────────────────────────────────────────────────────
     document.querySelectorAll('[data-pay]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const msg = 'Оплата скоро будет доступна';
+        showToast('Оплата скоро будет доступна');
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
-        if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
       });
     });
 
