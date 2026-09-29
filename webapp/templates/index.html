@@ -436,6 +436,19 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
   <section class="sec active" id="sec-home">
     <div class="stagger">
 
+      <div class="card" id="apiErrorBanner" hidden style="border-color:color-mix(in srgb,var(--hot) 45%,var(--border))">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="gicon" style="width:38px;height:38px;background:color-mix(in srgb,var(--hot) 18%,transparent);color:var(--hot-2);flex-shrink:0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="action-title">Нет связи с сервером</div>
+            <div class="action-sub">Данные могут быть неактуальны. Проверьте соединение.</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm ripple" id="btnRetryApi" style="width:100%;margin-top:12px">Повторить</button>
+      </div>
+
       <div class="hero">
         <div class="hero-glass"></div>
         <div class="hero-top">
@@ -1029,6 +1042,18 @@ function happLink(v){
 
 function renderKeys(){
   keysList.innerHTML='';
+  if(!userKeys.length && lastKeysLoadFailed){
+    keysList.innerHTML='<div class="card"><div class="empty-state">'+
+      '<div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div>'+
+      '<h4>Не удалось загрузить ключи</h4><span class="muted">Проверьте соединение и попробуйте снова</span>'+
+      '<button class="btn btn-primary btn-sm ripple" id="btnRetryKeys">Повторить</button>'+
+    '</div></div>';
+    document.getElementById('btnRetryKeys').addEventListener('click',function(){
+      haptic('select');
+      loadUserKeys();
+    });
+    return;
+  }
   if(!userKeys.length){
     keysList.innerHTML='<div class="card"><div class="empty-state">'+
       '<div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m10.5 12.5 8-8M16 6l2 2M19 3l2 2"/></svg></div>'+
@@ -1214,35 +1239,53 @@ function updateSubscription(userData){
   renderPlans(); // подпись кнопок (Оплатить/Продлить) зависит от текущей подписки
 }
 
+// ── Ошибка связи с API: баннер + повтор (не путать с 401 — незарегистрированный юзер, штатный сценарий) ──
+function showApiError(){ document.getElementById('apiErrorBanner').hidden=false; }
+function hideApiError(){ document.getElementById('apiErrorBanner').hidden=true; }
+document.getElementById('btnRetryApi').addEventListener('click',function(){
+  haptic('select');
+  initApp();
+});
+
 // ── Load user data from API ──
 function loadUserData(){
   return fetch('/api/me',{headers:{'X-Init-Data':initHeader()}})
   .then(function(res){
-    if(!res.ok) throw new Error('auth');
-    return res.json();
-  })
-  .then(function(data){
-    currentUserData=data;
-    fillProfile(data);
-    updateSubscription(data);
-  })
-  .catch(function(){
+    if(res.ok){
+      hideApiError();
+      return res.json().then(function(data){
+        currentUserData=data;
+        fillProfile(data);
+        updateSubscription(data);
+      });
+    }
+    // 401 и т.п. — юзер просто не зарегистрирован в БД, это не сбой сети
+    hideApiError();
     currentUserData=null;
     fillProfile(null);
     updateSubscription(null);
+  })
+  .catch(function(){
+    // Настоящий сбой сети/сервера — не молчим
+    currentUserData=null;
+    fillProfile(null);
+    updateSubscription(null);
+    showApiError();
   });
 }
 
 function loadUserKeys(){
   return fetch('/api/keys',{headers:{'X-Init-Data':initHeader()}})
   .then(function(res){
-    if(!res.ok) return;
+    if(!res.ok){ lastKeysLoadFailed=true; return; }
     return res.json().then(function(data){
       userKeys=data.keys||[];
+      lastKeysLoadFailed=false;
     });
   })
   .catch(function(){
     userKeys=[];
+    lastKeysLoadFailed=true;
   })
   .then(function(){
     renderKeys();
