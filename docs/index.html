@@ -1045,8 +1045,8 @@ document.getElementById('btnLogin').addEventListener('click',enter);
 (async function boot(){
   try{
     const r=await fetch(API_BASE+'/api/me',{headers:authHeaders()});
-    if(r.status===401) showLanding(); else showApp();
-  }catch(e){ showApp(); } // бэкенд недоступен — демо-режим
+    if(r.ok) showApp(); else showLanding();
+  }catch(e){ showLanding(); } // бэкенд недоступен — тоже лендинг, не основной UI
 })();
 
 applySettings();
