@@ -806,15 +806,46 @@ if(tg){
   if(tg.setBackgroundColor) tg.setBackgroundColor('#0a0a0f');
 }
 
-// ── Toast ──
-var toastTimer=null;
+// ── Toast (очередь — несколько подряд не перетирают друг друга) ──
+var toastTimer=null, toastQueue=[], toastShowing=false;
 function showToast(text){
+  toastQueue.push(text);
+  if(!toastShowing) drainToastQueue();
+}
+function drainToastQueue(){
+  if(!toastQueue.length){ toastShowing=false; return; }
+  toastShowing=true;
+  var text=toastQueue.shift();
   var t=document.getElementById('toast');
   t.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span></span>';
   t.querySelector('span').textContent=text;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer=setTimeout(function(){t.classList.remove('show');},2400);
+  toastTimer=setTimeout(function(){
+    t.classList.remove('show');
+    setTimeout(drainToastQueue, 220);
+  },2000);
+}
+
+// ── Копирование в буфер: Clipboard API, иначе execCommand('copy') для старых WebView ──
+function copyText(v){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(v).catch(function(){ copyTextFallback(v); });
+  }else{
+    copyTextFallback(v);
+  }
+}
+function copyTextFallback(v){
+  try{
+    var ta=document.createElement('textarea');
+    ta.value=v;
+    ta.style.position='fixed';
+    ta.style.left='-9999px';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }catch(e){}
 }
 
 // ── Ripple ──
@@ -1168,7 +1199,7 @@ function renderKeys(){
   keysList.querySelectorAll('[data-copy]').forEach(function(b){
     b.addEventListener('click',function(){
       var v=userKeys[+b.dataset.copy].key_value;
-      if(navigator.clipboard) navigator.clipboard.writeText(v).catch(function(){});
+      copyText(v);
       haptic('success');
       var prevHtml=b.innerHTML;
       b.classList.add('copied');
@@ -1391,7 +1422,7 @@ initApp();
 function bindCopyLink(btnId,textId){
   document.getElementById(btnId).addEventListener('click',function(){
     var v='https://'+document.getElementById(textId).textContent;
-    if(navigator.clipboard) navigator.clipboard.writeText(v).catch(function(){});
+    copyText(v);
     showToast('Ссылка скопирована'); haptic('success');
   });
 }
