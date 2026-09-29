@@ -41,7 +41,7 @@ body{
   color:var(--text);
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
-  padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px) + 12px);
+  padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px) + 28px);
   transition:background .3s var(--ease);
 }
 button{font-family:inherit;color:inherit}
@@ -89,7 +89,7 @@ body:not(.loaded) main{display:none}
 
 /* ===== Content ===== */
 main{position:relative;z-index:1;padding:4px 16px 20px}
-.sec{display:none}
+.sec{display:none;padding-bottom:20px}
 .sec.active{display:block;animation:secIn .35s var(--ease)}
 @keyframes secIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .stagger>*{animation:rise .45s var(--ease) both}
@@ -665,6 +665,11 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
       <button class="btn btn-primary" id="btnSupportProfile" style="margin-top:2px">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4 8.5 8.5 0 0 1-4-1L3 20l1.1-5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
         Написать в поддержку
+      </button>
+
+      <button class="btn btn-ghost ripple" id="btnLogout" style="margin-top:10px">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        Выйти из профиля
       </button>
 
     </div>
@@ -1444,6 +1449,20 @@ function openSupport(){
 }
 document.getElementById('btnSupportTop').addEventListener('click',openSupport);
 document.getElementById('btnSupportProfile').addEventListener('click',openSupport);
+
+// ── Выход из профиля: локальный сброс + закрытие мини-аппа (Telegram-аккаунт трогать нельзя) ──
+document.getElementById('btnLogout').addEventListener('click',function(){
+  haptic('warning');
+  try{ localStorage.removeItem('blvpn:settings'); }catch(e){}
+  currentUserData=null;
+  userKeys=[];
+  if(tg && tg.close){
+    showToast('Выходим…');
+    setTimeout(function(){ tg.close(); }, 400);
+  }else{
+    showToast('Мини-приложение привязано к вашему Telegram-аккаунту — выйти можно, закрыв его');
+  }
+});
 document.getElementById('btnSupportQuick').addEventListener('click',openSupport);
 
 applySettings();
