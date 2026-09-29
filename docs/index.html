@@ -1053,35 +1053,41 @@ document.getElementById('btnSupportQuick').addEventListener('click',openSupport)
 // ── Онбординг: /api/me → 200 основной UI, 401 лендинг ──
 const API_BASE=''; // если Pages отдельно от бэкенда: 'https://api.example.com'
 const authHeaders=()=>({'X-Init-Data':tg&&tg.initData?tg.initData:''});
-function showApp(){ document.body.classList.remove('boot','landing-on'); document.getElementById('landing').hidden=true; }
+function showMainUI(){ document.body.classList.remove('boot','landing-on'); document.getElementById('landing').hidden=true; }
 function showLanding(){ document.body.classList.remove('boot'); document.body.classList.add('landing-on'); document.getElementById('landing').hidden=false; }
-async function enter(){
-  if(tg) tg.ready();
-  if(!tg || !tg.initData){
+
+async function doTelegramAuth() {
+  const tg = window.Telegram?.WebApp;
+  const initData = tg?.initData;
+  if (!initData) {
     alert('Откройте приложение через Telegram бота');
     return;
   }
-  const btns=[document.getElementById('btnRegister'),document.getElementById('btnLogin')];
-  btns.forEach(b=>b.disabled=true);
-  try{
-    const r=await fetch(API_BASE+'/api/register',{method:'POST',headers:authHeaders()});
-    if(r.ok){ haptic('success'); showApp(); loadSubscription(); }
-    else if(r.status===401) showToast('Откройте приложение через Telegram');
-    else showToast('Сервер недоступен, попробуйте позже');
-  }catch(e){ showToast('Нет соединения с сервером'); }
-  btns.forEach(b=>b.disabled=false);
+  try {
+    const res = await fetch('/api/me', {
+      headers: { 'X-Init-Data': initData }
+    });
+    if (res.ok) {
+      showMainUI(); // скрыть landing, показать основной UI
+      loadSubscription();
+    } else {
+      alert('Ошибка авторизации: ' + res.status);
+    }
+  } catch (e) {
+    alert('Нет связи с сервером');
+  }
 }
-document.getElementById('btnRegister').addEventListener('click',enter);
-document.getElementById('btnLogin').addEventListener('click',enter);
+document.getElementById('btnRegister').addEventListener('click',doTelegramAuth);
+document.getElementById('btnLogin').addEventListener('click',doTelegramAuth);
 document.getElementById('btnGuest').addEventListener('click',e=>{
   e.preventDefault();
   haptic('select');
-  showApp();
+  showMainUI();
 });
 (async function boot(){
   try{
     const r=await fetch(API_BASE+'/api/me',{headers:authHeaders()});
-    if(r.ok){ showApp(); loadSubscription(); } else showLanding();
+    if(r.ok){ showMainUI(); loadSubscription(); } else showLanding();
   }catch(e){ showLanding(); } // бэкенд недоступен — тоже лендинг, не основной UI
 })();
 
