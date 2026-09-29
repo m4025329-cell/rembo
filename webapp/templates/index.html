@@ -837,38 +837,45 @@ function initHeader(){
   return (tg && tg.initData) ? tg.initData : '';
 }
 
-// ── Plans (client-side, matches server PLANS) ──
+// ── Plans (fallback, перезаписывается ответом /api/plans) ──
+var PLAN_FEATS=['Доступ ко всем серверам','VLESS + Reality','Поддержка 24/7'];
+var PLAN_TITLES={'1m':'Стартовый','3m':'Оптимальный','6m':'Максимум'};
 var PLANS=[
-  {id:'1m',title:'Стартовый',sub:'1 устройство · 30 дней',price:150,period:'30 дн',feats:['Доступ ко всем серверам','VLESS + Reality','Поддержка 24/7']},
-  {id:'3m',title:'Оптимальный',sub:'1 устройство · 90 дней',price:350,period:'90 дн',feats:['Доступ ко всем серверам','VLESS + Reality','Приоритетная поддержка'],hot:true},
-  {id:'6m',title:'Максимум',sub:'1 устройство · 180 дней',price:600,period:'180 дн',feats:['Доступ ко всем серверам','VLESS + Reality','Лучшая цена: 100 ₽/мес']},
+  {id:'1m',title:'Стартовый',sub:'1 устройство · 30 дней',price:150,period:'30 дн',feats:PLAN_FEATS},
+  {id:'3m',title:'Оптимальный',sub:'1 устройство · 90 дней',price:350,period:'90 дн',feats:PLAN_FEATS,hot:true},
+  {id:'6m',title:'Максимум',sub:'1 устройство · 180 дней',price:600,period:'180 дн',feats:PLAN_FEATS},
 ];
 var plansList=document.getElementById('plansList');
-PLANS.forEach(function(p){
-  var el=document.createElement('div');
-  el.className='plan-card'+(p.hot?' hot':'');
-  el.innerHTML=
-    (p.hot?'<span class="plan-badge">Популярный</span>':'')+
-    '<div class="plan-head">'+
-      '<div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="M12 6v6l4 2"/></svg></div>'+
-      '<div><div class="plan-title">'+p.title+'</div><div class="plan-sub">'+p.sub+'</div></div>'+
-    '</div>'+
-    '<div class="plan-price-row"><span class="plan-price">'+p.price+' ₽</span><span class="plan-period">/ '+p.period+'</span></div>'+
-    '<div class="plan-feats">'+p.feats.map(function(f){return '<div class="plan-feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'+f+'</div>';}).join('')+'</div>'+
-    '<button class="btn '+(p.hot?'btn-hot':'btn-primary')+' ripple" data-pay="'+p.id+'">'+
-      '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg>'+
-      'Оплатить '+p.price+' ₽</button>';
-  el.addEventListener('click', function(ev){
-    if(ev.target.closest('[data-pay]')) return;
-    document.querySelectorAll('.plan-card').forEach(function(c){c.classList.remove('sel');});
-    el.classList.add('sel'); haptic('select');
+function renderPlans(){
+  plansList.innerHTML='';
+  PLANS.forEach(function(p){
+    var el=document.createElement('div');
+    el.className='plan-card'+(p.hot?' hot':'');
+    var payLabel=(currentUserData && currentUserData.is_subscribed ? 'Продлить ' : 'Оплатить ')+p.price+' ₽';
+    el.innerHTML=
+      (p.hot?'<span class="plan-badge">Популярный</span>':'')+
+      '<div class="plan-head">'+
+        '<div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="M12 6v6l4 2"/></svg></div>'+
+        '<div><div class="plan-title">'+p.title+'</div><div class="plan-sub">'+p.sub+'</div></div>'+
+      '</div>'+
+      '<div class="plan-price-row"><span class="plan-price">'+p.price+' ₽</span><span class="plan-period">/ '+p.period+'</span></div>'+
+      '<div class="plan-feats">'+p.feats.map(function(f){return '<div class="plan-feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'+f+'</div>';}).join('')+'</div>'+
+      '<button class="btn '+(p.hot?'btn-hot':'btn-primary')+' ripple" data-pay="'+p.id+'">'+
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg>'+
+        payLabel+'</button>';
+    el.addEventListener('click', function(ev){
+      if(ev.target.closest('[data-pay]')) return;
+      document.querySelectorAll('.plan-card').forEach(function(c){c.classList.remove('sel');});
+      el.classList.add('sel'); haptic('select');
+    });
+    plansList.appendChild(el);
   });
-  plansList.appendChild(el);
-});
-var addon=document.createElement('div');
-addon.className='addon-card';
-addon.innerHTML='<div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></div><div><b>Доп. устройство</b><br><span>+75 ₽/мес к любому тарифу</span></div>';
-plansList.appendChild(addon);
+  var addon=document.createElement('div');
+  addon.className='addon-card';
+  addon.innerHTML='<div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></div><div><b>Доп. устройство</b><br><span>+75 ₽/мес к любому тарифу</span></div>';
+  plansList.appendChild(addon);
+}
+renderPlans();
 
 // ── RollyPay payment flow (DO NOT MODIFY) ──
 var _payPolling=null;
@@ -927,30 +934,64 @@ function startPayPolling(orderId){
   },3000);
 }
 
-// ── Servers (static demo with ping/load) ──
+// ── Servers (fallback base ping/load, перезаписывается ответом /api/plans) ──
 var SERVERS=[
-  {flag:'🇩🇪',name:'Германия',city:'Франкфурт',ping:24,load:42},
-  {flag:'🇳🇱',name:'Нидерланды',city:'Амстердам',ping:31,load:58},
-  {flag:'🇫🇮',name:'Финляндия',city:'Хельсинки',ping:38,load:35},
-  {flag:'🇺🇸',name:'США',city:'Нью-Йорк',ping:112,load:67},
-  {flag:'🇯🇵',name:'Япония',city:'Токио',ping:156,load:29},
+  {code:'de',flag:'🇩🇪',name:'Германия',city:'Франкфурт',basePing:24,baseLoad:42},
+  {code:'nl',flag:'🇳🇱',name:'Нидерланды',city:'Амстердам',basePing:31,baseLoad:58},
+  {code:'fi',flag:'🇫🇮',name:'Финляндия',city:'Хельсинки',basePing:38,baseLoad:35},
+  {code:'us',flag:'🇺🇸',name:'США',city:'Нью-Йорк',basePing:112,baseLoad:67},
+  {code:'jp',flag:'🇯🇵',name:'Япония',city:'Токио',basePing:156,baseLoad:29},
 ];
 var serverList=document.getElementById('serverList');
-SERVERS.forEach(function(s){
-  var el=document.createElement('div');
-  el.className='server-row';
-  el.innerHTML=
-    '<div class="server-flag">'+s.flag+'</div>'+
-    '<div class="server-body">'+
-      '<div class="server-name">'+s.name+'</div><div class="server-city">'+s.city+'</div>'+
-      '<div class="server-load"><i style="width:'+s.load+'%"></i></div>'+
-    '</div>'+
-    '<div class="server-right">'+
-      '<div class="server-ping">'+s.ping+' ms</div>'+
-      '<div class="server-status"><span class="pd"></span>Online</div>'+
-    '</div>';
-  serverList.appendChild(el);
-});
+function renderServers(){
+  serverList.innerHTML='';
+  SERVERS.forEach(function(s){
+    // ponytail: реального замера пинга из браузера нет — берём базовое
+    // значение ±jitter, чтобы цифры не выглядели статично мёртвыми
+    var ping=Math.max(8, Math.round(s.basePing+(Math.random()*10-5)));
+    var load=Math.min(95, Math.max(5, Math.round(s.baseLoad+(Math.random()*8-4))));
+    var el=document.createElement('div');
+    el.className='server-row';
+    el.innerHTML=
+      '<div class="server-flag">'+s.flag+'</div>'+
+      '<div class="server-body">'+
+        '<div class="server-name">'+s.name+'</div><div class="server-city">'+(s.city||'')+'</div>'+
+        '<div class="server-load"><i style="width:'+load+'%"></i></div>'+
+      '</div>'+
+      '<div class="server-right">'+
+        '<div class="server-ping">'+ping+' ms</div>'+
+        '<div class="server-status"><span class="pd"></span>Online</div>'+
+      '</div>';
+    serverList.appendChild(el);
+  });
+}
+renderServers();
+
+// ── /api/plans — источник правды для тарифов и серверов, клиентские массивы остаются fallback ──
+function loadPlansAndServers(){
+  return fetch('/api/plans').then(function(r){
+    if(!r.ok) return;
+    return r.json().then(function(d){
+      if(d.plans){
+        PLANS=Object.keys(d.plans).map(function(id){
+          var p=d.plans[id];
+          return {id:id, title:PLAN_TITLES[id]||p.title, sub:p.title, price:p.price, period:p.days+' дн', feats:PLAN_FEATS, hot:id==='3m'};
+        });
+        renderPlans();
+      }
+      if(d.servers && d.servers.length){
+        SERVERS=d.servers.map(function(s){
+          var prev=SERVERS.filter(function(x){return x.code===s.code;})[0];
+          return {code:s.code, flag:s.flag, name:s.name, city:prev?prev.city:'', basePing:prev?prev.basePing:60, baseLoad:prev?prev.baseLoad:45};
+        });
+        renderServers();
+      }
+    });
+  }).catch(function(){
+    // офлайн/бэкенд недоступен — остаёмся на дефолтных данных выше
+  });
+}
+loadPlansAndServers();
 
 // ── QR code (real, qrcode-generator library) ──
 function makeQr(text,cell){
@@ -961,6 +1002,8 @@ function makeQr(text,cell){
 // ── Keys rendering ──
 var keysList=document.getElementById('keysList');
 var userKeys=[];
+var currentUserData=null;
+var lastKeysLoadFailed=false;
 
 function happLink(v){
   return 'happ://add/'+encodeURIComponent(v);
