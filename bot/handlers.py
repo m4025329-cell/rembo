@@ -38,21 +38,33 @@ WELCOME_TEXT = home_text()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message) -> None:
-    """/start — сохраняем пользователя и открываем WebApp."""
+    """/start — регистрация нового пользователя или welcome back."""
     user = message.from_user
     if user is None:
         return
     async with AsyncSessionLocal() as session:
-        await get_or_create_user(
+        db_user = await get_or_create_user(
             session,
             tg_id=user.id,
             username=user.username,
             full_name=user.full_name,
         )
-    # Показываем WebApp-кнопку только когда URL реально настроен.
-    # На плейсхолдере example.com Telegram отказал бы открыть окно.
+        is_new = getattr(db_user, "_is_new", False)
+
     kb = webapp_kb(settings.WEBAPP_URL) if settings.has_real_webapp else main_kb()
-    await message.answer(home_text(), reply_markup=kb, parse_mode="HTML")
+
+    if is_new:
+        text = (
+            f"✅ <b>Регистрация прошла!</b>\n\n"
+            f"Привет, {user.first_name}! Добро пожаловать в "
+            f"<b>{settings.SERVICE_NAME}</b>.\n\n"
+            f"Открой мини-приложение, чтобы выбрать тариф "
+            f"и получить VPN-ключ."
+        )
+    else:
+        text = home_text()
+
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.message(Command("help"))

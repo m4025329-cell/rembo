@@ -57,6 +57,19 @@ async def get_or_create_user(
         session.add(user)
         await session.commit()
         await session.refresh(user)
+        user._is_new = True  # ponytail: transient flag, not persisted
+    else:
+        # Sync profile — Telegram names change
+        changed = False
+        if username and user.username != username:
+            user.username = username
+            changed = True
+        if full_name and user.full_name != full_name:
+            user.full_name = full_name
+            changed = True
+        if changed:
+            await session.commit()
+        user._is_new = False
     return user
 
 
