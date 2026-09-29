@@ -785,11 +785,59 @@ const addon=document.createElement('div');
 addon.className='addon-card';
 addon.innerHTML=`<div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></div><div><b>Доп. устройство</b><br><span>+75 ₽/мес к любому тарифу</span></div>`;
 plansList.appendChild(addon);
+// ── RollyPay payment flow ──
+let _payPolling=null;
 document.addEventListener('click', e=>{
   const btn=e.target.closest('[data-pay]'); if(!btn) return;
   e.stopPropagation();
-  showToast('Оплата скоро будет доступна'); haptic('warning');
+  const planId=btn.dataset.pay;
+  buyPlan(planId);
 });
+async function buyPlan(planId){
+  haptic('medium');
+  document.querySelectorAll('[data-pay]').forEach(b=>b.disabled=true);
+  showToast('Создаём платёж…','⏳');
+  try{
+    const res=await fetch('/api/pay',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Init-Data':tg&&tg.initData?tg.initData:''},
+      body:JSON.stringify({plan:planId}),
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.detail||'Ошибка сервера');
+    if(data.mode==='stub'){
+      showToast('Подписка активирована (dev)','✅'); haptic('success'); return;
+    }
+    if(data.pay_url){
+      showToast('Переходим к оплате…','💳');
+      window.open(data.pay_url,'_blank');
+      startPayPolling(data.order_id);
+    }
+  }catch(err){
+    showToast(err.message||'Ошибка оплаты','❌'); haptic('error');
+  }finally{
+    document.querySelectorAll('[data-pay]').forEach(b=>b.disabled=false);
+  }
+}
+function startPayPolling(orderId){
+  let n=0; if(_payPolling) clearInterval(_payPolling);
+  _payPolling=setInterval(async()=>{
+    if(++n>100){clearInterval(_payPolling);_payPolling=null;return;}
+    try{
+      const r=await fetch(`/api/payment-status/${orderId}`,{headers:{'X-Init-Data':tg&&tg.initData?tg.initData:''}});
+      if(!r.ok) return;
+      const d=await r.json();
+      if(d.status==='paid'){
+        clearInterval(_payPolling);_payPolling=null;
+        showToast('Оплата прошла! Подписка активирована','✅'); haptic('success');
+        setTimeout(()=>switchTab(0),1500);
+      }else if(d.status==='canceled'){
+        clearInterval(_payPolling);_payPolling=null;
+        showToast('Платёж отменён','❌'); haptic('error');
+      }
+    }catch(_){}
+  },3000);
+}
 
 // ── Данные: серверы (пинг и загрузка — статичные демо-значения) ──
 const SERVERS=[

@@ -11,6 +11,7 @@ Dev-режим (DEBUG=true) разрешает работу без initData от
 в проде обязательно DEBUG=false.
 """
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import aiohttp
@@ -23,10 +24,13 @@ from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from config import settings
 from db.database import get_session, init_db
+from db.models import Payment, User
 from db.repo import (
     PLANS,
     SERVERS,
@@ -38,6 +42,7 @@ from db.repo import (
 )
 from security.logging_setup import audit, setup_logging
 from webapp.middleware import SecurityHeadersMiddleware
+from webapp.rollypay import create_payment, verify_webhook_signature, generate_order_id
 from webapp.tg_auth import verify_init_data
 
 
@@ -189,11 +194,195 @@ async def api_pay(
     session: AsyncSession = Depends(get_session),
     user=Depends(current_user),
 ) -> dict:
+    """
+    Создать платёж в RollyPay и вернуть pay_url для перенаправления.
+    Если ROLLYPAY_API_KEY не задан — fallback на заглушку (dev-режим).
+    """
     if payload.plan not in PLANS:
         raise HTTPException(400, detail="unknown plan")
-    sub = await grant_subscription(session, user, payload.plan)
-    audit(user.tg_id, "self_pay_stub", plan=payload.plan)
-    return {"ok": True, "plan": sub.plan, "expires_at": sub.expires_at.isoformat()}
+
+    plan_info = PLANS[payload.plan]
+
+    # Dev fallback: если RollyPay не настроен
+    if not settings.ROLLYPAY_API_KEY:
+        logger.warning("RollyPay не настроен — активируем подписку без оплаты (dev)")
+        sub = await grant_subscription(session, user, payload.plan)
+        audit(user.tg_id, "self_pay_stub", plan=payload.plan)
+        return {
+            "ok": True,
+            "mode": "stub",
+            "plan": sub.plan,
+            "expires_at": sub.expires_at.isoformat(),
+        }
+
+    # Создаём платёж в RollyPay
+    order_id = generate_order_id()
+    payment = Payment(
+        user_id=user.id,
+        order_id=order_id,
+        plan=payload.plan,
+        amount=plan_info["price"],
+        status="pending",
+    )
+    session.add(payment)
+    await session.commit()
+    await session.refresh(payment)
+
+    try:
+        result = await create_payment(
+            amount=plan_info["price"],
+            order_id=order_id,
+            plan=payload.plan,
+            customer_id=str(user.tg_id),
+            description=f"BlackLotusVPN — {plan_info['title']}",
+            redirect_url=settings.WEBAPP_URL,
+        )
+    except Exception as e:
+        logger.exception("Ошибка создания платежа RollyPay: %s", e)
+        payment.status = "error"
+        await session.commit()
+        raise HTTPException(502, detail="payment service unavailable")
+
+    payment.rollypay_id = result.get("payment_id")
+    payment.pay_url = result.get("pay_url")
+    await session.commit()
+
+    audit(user.tg_id, "payment_created", plan=payload.plan,
+          order_id=order_id, amount=plan_info["price"])
+
+    return {
+        "ok": True,
+        "mode": "rollypay",
+        "pay_url": payment.pay_url,
+        "order_id": order_id,
+    }
+
+
+# ── RollyPay Webhook ─────────────────────────────────────────────
+
+@app.post("/api/webhooks/rollypay")
+async def rollypay_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> JSONResponse:
+    """
+    Обработчик вебхуков от RollyPay.
+    Проверяет HMAC-подпись, обновляет статус платежа, активирует подписку.
+    """
+    body = await request.body()
+    signature = request.headers.get("X-Signature", "")
+    timestamp = request.headers.get("X-Timestamp", "")
+
+    if not verify_webhook_signature(body, signature, timestamp):
+        logger.warning("RollyPay webhook: invalid signature")
+        return JSONResponse({"error": "invalid signature"}, status_code=403)
+
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid json"}, status_code=400)
+
+    event = data.get("event", "")
+    payment_data = data.get("payment", data)
+    order_id = payment_data.get("order_id", "")
+
+    logger.info("RollyPay webhook: event=%s, order_id=%s", event, order_id)
+
+    if not order_id:
+        return JSONResponse({"error": "missing order_id"}, status_code=400)
+
+    result = await session.execute(
+        select(Payment).where(Payment.order_id == order_id)
+    )
+    payment = result.scalar_one_or_none()
+    if not payment:
+        logger.warning("RollyPay webhook: unknown order_id=%s", order_id)
+        return JSONResponse({"error": "unknown order"}, status_code=404)
+
+    # Идемпотентность
+    if payment.status in ("paid", "canceled"):
+        return JSONResponse({"ok": True, "status": payment.status})
+
+    if event == "payment.paid":
+        payment.status = "paid"
+        payment.paid_at = datetime.utcnow()
+        payment.payment_method = payment_data.get("payment_method")
+        if payment_data.get("payment_id"):
+            payment.rollypay_id = payment_data["payment_id"]
+
+        # Активируем подписку
+        user_result = await session.execute(
+            select(User)
+            .where(User.id == payment.user_id)
+            .options(selectinload(User.subscription))
+        )
+        user = user_result.scalar_one_or_none()
+
+        if user:
+            await grant_subscription(session, user, payment.plan, payment.amount)
+            audit(user.tg_id, "payment_paid", plan=payment.plan,
+                  order_id=order_id, amount=payment.amount)
+
+            # Уведомление пользователю через Bot API
+            try:
+                p_info = PLANS.get(payment.plan, {})
+                text = (
+                    f"✅ <b>Оплата прошла!</b>\n\n"
+                    f"Тариф: {p_info.get('title', payment.plan)}\n"
+                    f"Сумма: {payment.amount:.0f} ₽\n\n"
+                    f"Подписка активирована. Откройте приложение для "
+                    f"получения VPN-ключа."
+                )
+                api_url = f"https://api.telegram.org/bot{settings.BOT_TOKEN}/sendMessage"
+                async with aiohttp.ClientSession() as http:
+                    await http.post(api_url, json={
+                        "chat_id": user.tg_id,
+                        "text": text,
+                        "parse_mode": "HTML",
+                    }, timeout=aiohttp.ClientTimeout(total=5))
+            except Exception:
+                logger.exception("Не удалось уведомить user %s об оплате", user.tg_id)
+        else:
+            logger.error("RollyPay webhook: user not found for payment %s", order_id)
+
+    elif event == "payment.canceled":
+        payment.status = "canceled"
+        audit(0, "payment_canceled", order_id=order_id)
+
+    await session.commit()
+    return JSONResponse({"ok": True})
+
+
+# ── Статус платежа (polling из Mini App) ──────────────────────────
+
+@app.get("/api/payment-status/{order_id}")
+@limiter.limit("30/minute")
+async def api_payment_status(
+    request: Request,
+    order_id: str,
+    session: AsyncSession = Depends(get_session),
+    user=Depends(current_user),
+) -> dict:
+    """Проверить статус платежа. Доступно только владельцу платежа."""
+    result = await session.execute(
+        select(Payment).where(
+            Payment.order_id == order_id,
+            Payment.user_id == user.id,
+        )
+    )
+    payment = result.scalar_one_or_none()
+    if not payment:
+        raise HTTPException(404, detail="payment not found")
+
+    resp = {
+        "order_id": payment.order_id,
+        "status": payment.status,
+        "plan": payment.plan,
+        "amount": payment.amount,
+    }
+    if payment.status == "paid" and user.subscription:
+        resp["expires_at"] = user.subscription.expires_at.isoformat()
+    return resp
 
 
 class KeyRequest(BaseModel):

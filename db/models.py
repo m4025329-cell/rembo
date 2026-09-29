@@ -91,6 +91,28 @@ class DeviceSlot(Base):
     user: Mapped["User"] = relationship()
 
 
+class Payment(Base):
+    """
+    Запись о платеже через RollyPay.
+    Хранит состояние от создания до получения вебхука.
+    """
+    __tablename__ = "payments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    order_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    rollypay_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    plan: Mapped[str] = mapped_column(String(16))
+    amount: Mapped[float] = mapped_column(Float)
+    payment_method: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    pay_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    user: Mapped[User] = relationship()
+
+
 class SupportMessage(Base):
     """Сообщение из формы поддержки в мини-приложении."""
     __tablename__ = "support_messages"

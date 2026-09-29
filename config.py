@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     # ── Шифрование секретов в БД ────────────────────────────────────
     FERNET_KEY: str = Field(..., min_length=44, description="Fernet base64-ключ")
 
+    # ── RollyPay ──────────────────────────────────────────────────
+    ROLLYPAY_API_KEY: str = ""
+    ROLLYPAY_SIGNING_SECRET: str = ""
+    ROLLYPAY_API_URL: str = "https://api.rollypay.io"
+
     # ── Прочие секреты ─────────────────────────────────────────────
     JWT_SECRET: str = Field(..., min_length=16)
     XRAY_API_KEY: str = ""
@@ -146,7 +151,8 @@ class Settings(BaseSettings):
         d = self.model_dump()
         for key in (
             "BOT_TOKEN", "FERNET_KEY", "JWT_SECRET", "XRAY_API_KEY",
-            "PAYMENT_SECRET", "DB_PASSWORD",
+            "PAYMENT_SECRET", "DB_PASSWORD", "ROLLYPAY_API_KEY",
+            "ROLLYPAY_SIGNING_SECRET",
         ):
             if d.get(key):
                 d[key] = "***"
