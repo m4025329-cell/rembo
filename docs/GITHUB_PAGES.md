@@ -1,6 +1,6 @@
 # 🌐 Хостинг мини-приложения на GitHub Pages
 
-Мини-приложение (`webapp/index.html`) — self-contained SPA, поэтому его
+Мини-приложение (`docs/index.html`) — self-contained SPA, поэтому его
 можно бесплатно раздавать через GitHub Pages, а FastAPI-часть оставить
 только для API (или отключить вовсе, если оплата и генерация ключей
 пока не подключены).
@@ -24,7 +24,7 @@ git push -u origin main
 
 1. **Settings → Pages** в репозитории.
 2. **Source**: `Deploy from a branch`.
-3. **Branch**: `main`, **folder**: `/webapp`.
+3. **Branch**: ветка с кодом (например `main` после merge), **folder**: `/docs` (GitHub Pages умеет только `/` и `/docs`, папку `/webapp` выбрать нельзя).
 4. Save. Через 1–2 минуты появится URL вида:
 
    ```
@@ -65,7 +65,7 @@ Team / Enterprise**. Альтернативы:
 
 ## Пути и base URL
 
-`webapp/index.html` использует только относительные и абсолютные `https://`
+`docs/index.html` использует только относительные и абсолютные `https://`
 ссылки — никаких `/static/`. Работает и на корневом домене, и на
 подпапке `<repo>/`.
 
