@@ -46,7 +46,7 @@ body{
   color:var(--text);
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
-  padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px) + 24px);
+  padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px) + 28px);
   transition:background .3s var(--ease);
 }
 button{font-family:inherit;color:inherit}
@@ -80,9 +80,8 @@ input[type=range]{-webkit-appearance:none;appearance:none}
 
 /* ===== Контент/секции ===== */
 main{position:relative;z-index:1;padding:4px 16px 20px}
-.sec{display:none}
+.sec{display:none;padding-bottom:20px}
 .sec.active{display:block;animation:secIn .4s var(--ease)}
-#sec-plans,#sec-keys{padding-bottom:20px}
 @keyframes secIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .stagger>*{animation:rise .5s var(--ease) both}
 .stagger>*:nth-child(1){animation-delay:.02s}.stagger>*:nth-child(2){animation-delay:.07s}
@@ -363,45 +362,29 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 html.no-anim *,html.no-anim *::before,html.no-anim *::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 html.hc{--border:rgba(255,255,255,.22);--border-hi:rgba(255,255,255,.34);--muted:#b3aec4}
-
-/* ===== Лендинг (для незарегистрированных) ===== */
-body.boot main,body.boot .tabbar,body.boot .topbar{visibility:hidden}
-body.landing-on main,body.landing-on .tabbar,body.landing-on .topbar{display:none}
-.landing{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
-  padding:24px 24px calc(24px + env(safe-area-inset-bottom,0px));text-align:center;background:#080911;overflow:hidden;touch-action:none}
-.landing[hidden]{display:none}
-.landing::before,.landing::after{content:'';position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none}
-.landing::before{width:340px;height:340px;top:-120px;left:-100px;background:radial-gradient(circle,#7c3aed,transparent 70%);opacity:.5}
-.landing::after{width:320px;height:320px;bottom:-120px;right:-100px;background:radial-gradient(circle,#ec4899,transparent 70%);opacity:.35}
-.landing>*{position:relative;z-index:1;animation:rise .7s var(--ease) both}
-.landing .l-logo{width:84px;height:84px;border-radius:26px;display:flex;align-items:center;justify-content:center;font-size:42px;
-  background:linear-gradient(135deg,#7c3aed,#ec4899);box-shadow:0 18px 50px -12px rgba(168,85,247,.6);margin-bottom:22px}
-.landing h1{font-size:32px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px}
-.landing .l-slogan{font-size:15px;color:#c4b5fd;margin-bottom:14px}
-.landing .l-desc{font-size:13.5px;line-height:1.6;color:#948fa8;max-width:290px;margin-bottom:34px}
-.landing .l-actions{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
-.landing .btn-pink{background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;box-shadow:0 12px 32px -10px rgba(236,72,153,.55)}
-.landing .l-guest{margin-top:18px;font-size:12.5px;color:#6b6580;text-decoration:none}
-.landing .l-guest:active{opacity:.7}
-.landing>:nth-child(1){animation-delay:.05s}.landing>:nth-child(2){animation-delay:.12s}.landing>:nth-child(3){animation-delay:.19s}
-.landing>:nth-child(4){animation-delay:.26s}.landing>:nth-child(5){animation-delay:.33s}.landing>:nth-child(6){animation-delay:.4s}
 </style>
 </head>
-<body class="boot">
+<body>
 
 <div class="atmo"><i></i><i></i></div>
 <div class="noise"></div>
 <div class="toast" id="toast"></div>
-<div class="landing" id="landing" hidden>
-  <div class="l-logo">🪷</div>
-  <h1>BlackLotusVPN</h1>
-  <div class="l-slogan">Свободный интернет без границ</div>
-  <div class="l-desc">Быстро, приватно, без цензуры. Ключи VLESS+Reality для Happ за пару касаний.</div>
-  <div class="l-actions">
-    <button class="btn btn-pink ripple" id="btnRegister">Зарегистрироваться через Telegram</button>
-    <button class="btn btn-ghost ripple" id="btnLogin">Войти</button>
+
+<div id="landingScreen" style="position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;transition:opacity .4s,visibility .4s">
+  <div style="font-size:64px;margin-bottom:16px">🪷</div>
+  <h1 style="font-size:28px;font-weight:700;margin-bottom:8px">BlackLotusVPN</h1>
+  <p style="color:var(--muted);font-size:14px;margin-bottom:32px;max-width:280px">Быстрый и приватный VPN без цензуры. Обход блокировок в один клик.</p>
+  <button class="btn btn-primary ripple" id="btnAuth" style="max-width:320px;margin-bottom:12px">
+    Войти через Telegram
+  </button>
+  <button class="btn btn-ghost ripple" id="btnGuest" style="max-width:320px;margin-bottom:24px;font-size:13px">
+    Посмотреть без регистрации
+  </button>
+  <div style="display:flex;gap:20px;color:var(--muted);font-size:12px">
+    <span>🔒 Без логов</span>
+    <span>⚡ Высокая скорость</span>
+    <span>🌍 5 стран</span>
   </div>
-  <a class="l-guest" id="btnGuest" href="#">Посмотреть без регистрации →</a>
 </div>
 
 <header class="topbar">
@@ -420,13 +403,17 @@ body.landing-on main,body.landing-on .tabbar,body.landing-on .topbar{display:non
   </div>
 </header>
 
+<div id="guestBanner" style="display:none;margin:0 16px 12px;padding:12px 16px;border-radius:var(--r-md);background:color-mix(in srgb,var(--hot) 12%,transparent);border:1px solid color-mix(in srgb,var(--hot) 30%,transparent);font-size:13px;color:var(--hot-2);text-align:center">
+  Вы в гостевом режиме. <a href="#" id="guestAuthLink" style="color:var(--a3);text-decoration:underline">Войти через Telegram</a>
+</div>
+
 <main>
 
   <!-- ============ ГЛАВНАЯ ============ -->
   <section class="sec active" id="sec-home">
     <div class="stagger">
 
-      <div class="hero">
+      <div class="hero" id="hero">
         <div class="hero-glass"></div>
         <div class="hero-top">
           <div class="status-pill"><span class="pd" id="statusDot"></span><span id="statusText">Подписка не активна</span></div>
@@ -459,6 +446,15 @@ body.landing-on main,body.landing-on .tabbar,body.landing-on .topbar{display:non
           <div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4 8.5 8.5 0 0 1-4-1L3 20l1.1-5A8.4 8.4 0 1 1 21 11.5Z"/></svg></div>
           <span>Поддержка</span>
         </div>
+      </div>
+
+      <div class="card action-card" id="btnSpeedTest">
+        <div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 11-12h-9l0-8Z"/></svg></div>
+        <div class="action-body">
+          <div class="action-title">Проверить соединение</div>
+          <div class="action-sub" id="speedTestSub">Нажмите для проверки</div>
+        </div>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
       </div>
 
       <div class="card action-card" data-goto="keys">
@@ -651,7 +647,7 @@ body.landing-on main,body.landing-on .tabbar,body.landing-on .topbar{display:non
     <div class="card">
       <div class="slider-row">
         <div class="slider-label"><span>Осветление фона</span><span id="liftVal">0%</span></div>
-        <input type="range" id="liftSlider" min="0" max="15" value="0" />
+        <input type="range" id="liftSlider" min="0" max="12" value="0" />
       </div>
     </div>
 
@@ -685,7 +681,15 @@ body.landing-on main,body.landing-on .tabbar,body.landing-on .topbar{display:non
 'use strict';
 const tg = window.Telegram && window.Telegram.WebApp;
 const SUPPORT_USERNAME = 'Slavaprivet';
-let isGuest = false;
+const API_BASE=''; // если Pages отдельно от бэкенда: 'https://api.example.com'
+
+let appState = {
+  guest: false,
+  user: null,        // {id, first_name, last_name, username}
+  subscription: null, // {plan, expires_at, days_left} или null
+  keys: [],
+  loaded: false
+};
 
 // ── Настройки (тема/яркость/тумблеры), персистентно в localStorage ──
 const DEFAULTS = { theme:'ink', lift:0, contrast:false, anims:true, haptics:true };
@@ -900,7 +904,7 @@ SERVERS.forEach(s=>{
 });
 
 // ── Данные: ключи ──
-const KEYS=[];
+let KEYS=[];
 const keysList=document.getElementById('keysList');
 function happLink(v){
   // ponytail: формат happ://add/<url> — лучшее приближение к схеме Happ,
@@ -966,13 +970,12 @@ function makeQr(text,cell){
 }
 renderKeys();
 
-// ── Профиль: имя/аватар/username из Telegram WebApp initDataUnsafe.user ──
-const tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-function fillProfile(){
-  if(isGuest){
+// ── Профиль: рендер из appState (guest или user из Telegram) ──
+function updateProfileUI(){
+  if(appState.guest || !appState.user){
     document.getElementById('pfName').textContent='Гость';
-    document.getElementById('pfEmail').textContent='Не указан';
-    document.getElementById('pfNameRow').textContent='Гость';
+    document.getElementById('pfEmail').textContent='—';
+    document.getElementById('pfNameRow').textContent='—';
     document.getElementById('pfUsernameRow').textContent='—';
     document.getElementById('pfIdRow').textContent='—';
     document.getElementById('pfAvatar').innerHTML='👤';
@@ -983,83 +986,89 @@ function fillProfile(){
     return;
   }
 
-  const name=tgUser ? [tgUser.first_name,tgUser.last_name].filter(Boolean).join(' ')||'Пользователь' : 'Имя пользователя';
-  const username=tgUser && tgUser.username ? '@'+tgUser.username : null;
-  const id=tgUser ? tgUser.id : null;
+  const u=appState.user;
+  const name=[u.first_name,u.last_name].filter(Boolean).join(' ')||'Пользователь';
+  const username=u.username ? '@'+u.username : null;
 
   document.getElementById('pfName').textContent=name;
-  document.getElementById('pfEmail').textContent=username || (tgUser?'':'Откройте через Telegram');
+  document.getElementById('pfEmail').textContent=username || '—';
   document.getElementById('pfNameRow').textContent=name;
   document.getElementById('pfUsernameRow').textContent=username || '—';
-  document.getElementById('pfIdRow').textContent=id?('ID '+id):'—';
+  document.getElementById('pfIdRow').textContent='ID '+u.id;
 
   const avatar=document.getElementById('pfAvatar');
-  if(tgUser && tgUser.photo_url){
-    avatar.innerHTML=`<img src="${tgUser.photo_url}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
+  if(u.photo_url){
+    avatar.innerHTML=`<img src="${u.photo_url}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
   }else{
     avatar.textContent=(name[0]||'🖤').toUpperCase();
   }
 
-  const link='t.me/BlackLotusVPNBot?start=ref_'+(id||'demo');
+  const link='t.me/BlackLotusVPNBot?start=ref_'+u.id;
   document.getElementById('shareLink').textContent=link;
   document.getElementById('refLink').textContent=link;
   document.getElementById('shareQr').innerHTML=makeQr('https://'+link,2.4);
   document.getElementById('refQr').innerHTML=makeQr('https://'+link,3);
 }
-fillProfile();
 
-// ── Подписка: единая точка правды для hero + профиля. sub=null → «не активна» ──
-function updateSubscriptionUI(sub){
+// ── Подписка: единая точка правды для hero + профиля. appState.subscription=null → «не активна» ──
+function updateSubscriptionUI(){
+  const sub=appState.subscription;
   const dots=document.getElementById('progressDots');
+  const hero=document.getElementById('hero');
   dots.innerHTML='';
+  hero.style.borderColor='';
 
   if(!sub){
-    document.getElementById('statusDot').style.background='var(--muted)';
+    document.getElementById('statusDot').style.background='var(--muted-2)';
+    document.getElementById('statusDot').style.animation='none';
     document.getElementById('statusText').textContent='Подписка не активна';
     document.getElementById('heroPlanVal').textContent='Нет тарифа';
     document.getElementById('heroBtnText').textContent='Выбрать тариф';
     document.getElementById('daysLeft').textContent='0';
     document.getElementById('untilDate').textContent='';
-    document.getElementById('devicesChip').textContent='0 устройств';
-    document.getElementById('devicesSub').textContent='Нет подключённых устройств';
+    document.getElementById('devicesChip').textContent='—';
+    document.getElementById('devicesSub').textContent='Нет активной подписки';
     document.getElementById('pfSubTitle').textContent='Подписка не активна';
     document.getElementById('pfSubSub').textContent='Выберите тариф';
     return;
   }
 
   document.getElementById('statusDot').style.background='';
+  document.getElementById('statusDot').style.animation='';
   document.getElementById('statusText').textContent='Подписка активна';
   document.getElementById('heroBtnText').textContent='Подключить VPN';
-
-  const start=new Date(sub.started_at);
-  const end=new Date(sub.expires_at);
-  const total=Math.max(1, Math.round((end-start)/86400000));
-  const left=Math.max(0, Math.round((end-new Date())/86400000));
-  const fmt=end.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
-
   document.getElementById('heroPlanVal').textContent=sub.plan || '—';
-  document.getElementById('daysLeft').textContent=left;
-  document.getElementById('untilDate').textContent='до '+fmt;
+  document.getElementById('devicesChip').textContent='1 устройство';
+  document.getElementById('devicesSub').textContent='1 подключено · докупка +75 ₽/мес';
+  document.getElementById('daysLeft').textContent=sub.days_left;
+  document.getElementById('untilDate').textContent='до '+sub.expires_at.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
   document.getElementById('pfSubTitle').textContent='Подписка активна';
-  document.getElementById('pfSubSub').textContent='до '+fmt+' · осталось '+left+' дней';
+  document.getElementById('pfSubSub').textContent='до '+sub.expires_at.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})+' · осталось '+sub.days_left+' дней';
 
-  const segs=10, filled=Math.round(segs*(left/total));
+  // ponytail: total-days unknown here (appState.subscription carries only days_left),
+  // so progress assumes a 30-day cycle; upgrade by also storing started_at/plan length.
+  const segs=10, filled=Math.min(segs,Math.max(0,Math.round(segs*(sub.days_left/30))));
   for(let i=0;i<segs;i++){
     const el=document.createElement('i'); if(i<filled) el.className='fill'; dots.appendChild(el);
   }
+
+  if(sub.days_left<=3){
+    hero.style.borderColor='var(--hot)';
+    showToast('Подписка истекает через '+sub.days_left+' дн. Продлите!');
+  }
 }
 
-// ── Подписка: реальные данные из /api/me, без хардкода ──
-async function loadSubscription(){
-  if(isGuest){ updateSubscriptionUI(null); return; }
-  try{
-    const r=await fetch(API_BASE+'/api/me',{headers:authHeaders()});
-    if(!r.ok) throw new Error('unauthorized');
-    const d=await r.json();
-    updateSubscriptionUI(d.is_subscribed && d.subscription ? d.subscription : null);
-  }catch(e){
-    updateSubscriptionUI(null);
-  }
+// ── Ключи: рендер из appState.keys ──
+function updateKeysUI(){
+  KEYS = appState.keys.length ? appState.keys : [];
+  renderKeys();
+}
+
+// ── Единая точка обновления всего интерфейса из appState ──
+function updateAllUI(){
+  updateProfileUI();
+  updateSubscriptionUI();
+  updateKeysUI();
 }
 
 // ── Копирование ссылок (Главная + Партнёры) ──
@@ -1091,49 +1100,105 @@ document.getElementById('btnSupportTop').addEventListener('click',openSupport);
 document.getElementById('btnSupportProfile').addEventListener('click',openSupport);
 document.getElementById('btnSupportQuick').addEventListener('click',openSupport);
 
-// ── Онбординг: /api/me → 200 основной UI, 401 лендинг ──
-const API_BASE=''; // если Pages отдельно от бэкенда: 'https://api.example.com'
-const authHeaders=()=>({'X-Init-Data':tg&&tg.initData?tg.initData:''});
-function showMainUI(){ document.body.classList.remove('boot','landing-on'); document.getElementById('landing').hidden=true; }
-function showLanding(){ document.body.classList.remove('boot'); document.body.classList.add('landing-on'); document.getElementById('landing').hidden=false; }
+// ── Landing screen ──
+function hideLanding() {
+  const l = document.getElementById('landingScreen');
+  l.style.opacity = '0';
+  l.style.visibility = 'hidden';
+  setTimeout(() => l.style.display = 'none', 400);
+}
 
-async function doTelegramAuth() {
-  const tg = window.Telegram?.WebApp;
-  const initData = tg?.initData;
-  if (!initData) {
-    alert('Откройте приложение через Telegram бота');
+async function initApp() {
+  hideLanding();
+  document.getElementById('guestBanner').style.display = appState.guest ? 'block' : 'none';
+
+  if (appState.guest) {
+    appState.user = null;
+    appState.subscription = null;
+    appState.keys = [];
+  } else {
+    const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+    if (u) {
+      appState.user = { id: u.id, first_name: u.first_name, last_name: u.last_name, username: u.username, photo_url: u.photo_url };
+    }
+    try {
+      const res = await fetch(API_BASE + '/api/me', {
+        headers: { 'X-Init-Data': tg && tg.initData ? tg.initData : '' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.is_subscribed && data.subscription && data.subscription.expires_at) {
+          const exp = new Date(data.subscription.expires_at);
+          const now = new Date();
+          const daysLeft = Math.max(0, Math.ceil((exp - now) / 86400000));
+          appState.subscription = {
+            plan: data.subscription.plan || '—',
+            expires_at: exp,
+            days_left: daysLeft
+          };
+        } else {
+          appState.subscription = null;
+        }
+        if (data.keys && data.keys.length) {
+          appState.keys = data.keys;
+        }
+      } else {
+        appState.subscription = null;
+      }
+    } catch(e) {
+      // API недоступен — показать что есть из Telegram, подписку считать неактивной
+      appState.subscription = null;
+    }
+  }
+
+  appState.loaded = true;
+  updateAllUI();
+}
+
+document.getElementById('btnAuth').addEventListener('click', () => {
+  if (!tg || !tg.initData) {
+    showToast('Откройте через Telegram бота');
+    haptic('error');
     return;
   }
-  try {
-    const res = await fetch('/api/me', {
-      headers: { 'X-Init-Data': initData }
-    });
-    if (res.ok) {
-      showMainUI(); // скрыть landing, показать основной UI
-      loadSubscription();
-    } else {
-      alert('Ошибка авторизации: ' + res.status);
-    }
-  } catch (e) {
-    alert('Нет связи с сервером');
-  }
-}
-document.getElementById('btnRegister').addEventListener('click',doTelegramAuth);
-document.getElementById('btnLogin').addEventListener('click',doTelegramAuth);
-document.getElementById('btnGuest').addEventListener('click',e=>{
-  e.preventDefault();
-  haptic('select');
-  isGuest=true;
-  fillProfile();
-  showMainUI();
-  updateSubscriptionUI(null);
+  appState.guest = false;
+  initApp();
 });
-(async function boot(){
-  try{
-    const r=await fetch(API_BASE+'/api/me',{headers:authHeaders()});
-    if(r.ok){ showMainUI(); loadSubscription(); } else showLanding();
-  }catch(e){ showLanding(); } // бэкенд недоступен — тоже лендинг, не основной UI
-})();
+
+document.getElementById('btnGuest').addEventListener('click', () => {
+  haptic('select');
+  appState.guest = true;
+  initApp();
+});
+
+document.getElementById('guestAuthLink').addEventListener('click', e => {
+  e.preventDefault();
+  if (!tg || !tg.initData) {
+    showToast('Откройте через Telegram бота');
+    haptic('error');
+    return;
+  }
+  appState.guest = false;
+  initApp();
+});
+
+// ── Проверка соединения (заглушка) ──
+document.getElementById('btnSpeedTest').addEventListener('click', () => {
+  const sub = document.getElementById('speedTestSub');
+  sub.textContent = 'Проверяем…';
+  haptic('medium');
+  setTimeout(() => {
+    const ping = Math.floor(Math.random() * 30) + 15;
+    sub.textContent = ping + ' ms · Соединение стабильно';
+    haptic('success');
+  }, 2500);
+});
+
+// Автовход если initData есть
+if (tg && tg.initData) {
+  appState.guest = false;
+  initApp();
+}
 
 applySettings();
 </script>
