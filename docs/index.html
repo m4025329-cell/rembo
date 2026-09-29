@@ -380,8 +380,10 @@ body.landing-on main,body.landing-on .tabbar,body.landing-on .topbar{display:non
 .landing .l-desc{font-size:13.5px;line-height:1.6;color:#948fa8;max-width:290px;margin-bottom:34px}
 .landing .l-actions{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
 .landing .btn-pink{background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;box-shadow:0 12px 32px -10px rgba(236,72,153,.55)}
+.landing .l-guest{margin-top:18px;font-size:12.5px;color:#6b6580;text-decoration:none}
+.landing .l-guest:active{opacity:.7}
 .landing>:nth-child(1){animation-delay:.05s}.landing>:nth-child(2){animation-delay:.12s}.landing>:nth-child(3){animation-delay:.19s}
-.landing>:nth-child(4){animation-delay:.26s}.landing>:nth-child(5){animation-delay:.33s}
+.landing>:nth-child(4){animation-delay:.26s}.landing>:nth-child(5){animation-delay:.33s}.landing>:nth-child(6){animation-delay:.4s}
 </style>
 </head>
 <body class="boot">
@@ -398,6 +400,7 @@ body.landing-on main,body.landing-on .tabbar,body.landing-on .topbar{display:non
     <button class="btn btn-pink ripple" id="btnRegister">Зарегистрироваться через Telegram</button>
     <button class="btn btn-ghost ripple" id="btnLogin">Войти</button>
   </div>
+  <a class="l-guest" id="btnGuest" href="#">Посмотреть без регистрации →</a>
 </div>
 
 <header class="topbar">
@@ -1053,6 +1056,11 @@ const authHeaders=()=>({'X-Init-Data':tg&&tg.initData?tg.initData:''});
 function showApp(){ document.body.classList.remove('boot','landing-on'); document.getElementById('landing').hidden=true; }
 function showLanding(){ document.body.classList.remove('boot'); document.body.classList.add('landing-on'); document.getElementById('landing').hidden=false; }
 async function enter(){
+  if(tg) tg.ready();
+  if(!tg || !tg.initData){
+    alert('Откройте приложение через Telegram бота');
+    return;
+  }
   const btns=[document.getElementById('btnRegister'),document.getElementById('btnLogin')];
   btns.forEach(b=>b.disabled=true);
   try{
@@ -1065,6 +1073,11 @@ async function enter(){
 }
 document.getElementById('btnRegister').addEventListener('click',enter);
 document.getElementById('btnLogin').addEventListener('click',enter);
+document.getElementById('btnGuest').addEventListener('click',e=>{
+  e.preventDefault();
+  haptic('select');
+  showApp();
+});
 (async function boot(){
   try{
     const r=await fetch(API_BASE+'/api/me',{headers:authHeaders()});
