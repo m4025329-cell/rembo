@@ -8,28 +8,29 @@ const { DEFAULT_MODE, normalizeMode, normalizePersistedMode } = require('./ponyt
 const INDEPENDENT_MODES = new Set(['review']);
 const SKILL_PATH = path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md');
 
+// Pre-compiled regexes — defined once at module load, not inside filter callback.
+const FRONTMATTER_RE = /^---[\s\S]*?---\s*/;
+const TABLE_ROW_RE = /^\|\s*\*\*(.+?)\*\*\s*\|/;
+// Require a quoted value so ordinary rule bullets starting with a mode word
+// (e.g. "- Full: ...") are not silently dropped — worked examples are `- lite: "..."`.
+const EXAMPLE_ROW_RE = /^-\s*([^:]+):\s*"/;
+
 function filterSkillBodyForMode(body, mode) {
   const effectiveMode = normalizeMode(mode) || DEFAULT_MODE;
-  const withoutFrontmatter = String(body || '').replace(/^---[\s\S]*?---\s*/, '');
+  const withoutFrontmatter = String(body || '').replace(FRONTMATTER_RE, '');
 
-  // Only the intensity table rows and worked examples are mode-specific, and
-  // both are keyed by a mode name (lite/full/ultra). A bullet whose label is
-  // not a mode — e.g. "No unrequested abstractions: ..." — is a normal rule
-  // and must be kept verbatim.
+  // Only intensity table rows and worked examples are mode-specific; everything
+  // else is a normal rule and must be kept verbatim.
   return withoutFrontmatter
     .split(/\r?\n/)
     .filter((line) => {
-      const tableLabel = line.match(/^\|\s*\*\*(.+?)\*\*\s*\|/);
+      const tableLabel = line.match(TABLE_ROW_RE);
       if (tableLabel) {
         const labelMode = normalizeMode(tableLabel[1].trim());
         if (labelMode) return labelMode === effectiveMode;
       }
 
-      // Require a quoted value: every worked example is `- lite: "..."`. Without
-      // this, an ordinary rule bullet that happens to start with a mode word
-      // (e.g. "- Full: ...") is silently dropped in every other mode — it looks
-      // like a worked example but is really prose meant to survive verbatim.
-      const exampleLabel = line.match(/^-\s*([^:]+):\s*"/);
+      const exampleLabel = line.match(EXAMPLE_ROW_RE);
       if (exampleLabel) {
         const labelMode = normalizeMode(exampleLabel[1].trim());
         if (labelMode) return labelMode === effectiveMode;
