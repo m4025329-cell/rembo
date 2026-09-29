@@ -362,13 +362,43 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 html.no-anim *,html.no-anim *::before,html.no-anim *::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 html.hc{--border:rgba(255,255,255,.22);--border-hi:rgba(255,255,255,.34);--muted:#b3aec4}
+
+/* ===== Лендинг (для незарегистрированных) ===== */
+body.boot main,body.boot .tabbar,body.boot .topbar{visibility:hidden}
+body.landing-on main,body.landing-on .tabbar,body.landing-on .topbar{display:none}
+.landing{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+  padding:24px 24px calc(24px + env(safe-area-inset-bottom,0px));text-align:center;background:#080911;overflow:hidden;touch-action:none}
+.landing[hidden]{display:none}
+.landing::before,.landing::after{content:'';position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none}
+.landing::before{width:340px;height:340px;top:-120px;left:-100px;background:radial-gradient(circle,#7c3aed,transparent 70%);opacity:.5}
+.landing::after{width:320px;height:320px;bottom:-120px;right:-100px;background:radial-gradient(circle,#ec4899,transparent 70%);opacity:.35}
+.landing>*{position:relative;z-index:1;animation:rise .7s var(--ease) both}
+.landing .l-logo{width:84px;height:84px;border-radius:26px;display:flex;align-items:center;justify-content:center;font-size:42px;
+  background:linear-gradient(135deg,#7c3aed,#ec4899);box-shadow:0 18px 50px -12px rgba(168,85,247,.6);margin-bottom:22px}
+.landing h1{font-size:32px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px}
+.landing .l-slogan{font-size:15px;color:#c4b5fd;margin-bottom:14px}
+.landing .l-desc{font-size:13.5px;line-height:1.6;color:#948fa8;max-width:290px;margin-bottom:34px}
+.landing .l-actions{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
+.landing .btn-pink{background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;box-shadow:0 12px 32px -10px rgba(236,72,153,.55)}
+.landing>:nth-child(1){animation-delay:.05s}.landing>:nth-child(2){animation-delay:.12s}.landing>:nth-child(3){animation-delay:.19s}
+.landing>:nth-child(4){animation-delay:.26s}.landing>:nth-child(5){animation-delay:.33s}
 </style>
 </head>
-<body>
+<body class="boot">
 
 <div class="atmo"><i></i><i></i></div>
 <div class="noise"></div>
 <div class="toast" id="toast"></div>
+<div class="landing" id="landing" hidden>
+  <div class="l-logo">🪷</div>
+  <h1>BlackLotusVPN</h1>
+  <div class="l-slogan">Свободный интернет без границ</div>
+  <div class="l-desc">Быстро, приватно, без цензуры. Ключи VLESS+Reality для Happ за пару касаний.</div>
+  <div class="l-actions">
+    <button class="btn btn-pink ripple" id="btnRegister">Зарегистрироваться через Telegram</button>
+    <button class="btn btn-ghost ripple" id="btnLogin">Войти</button>
+  </div>
+</div>
 
 <header class="topbar">
   <div class="brand">
@@ -798,7 +828,7 @@ async function buyPlan(planId){
   document.querySelectorAll('[data-pay]').forEach(b=>b.disabled=true);
   showToast('Создаём платёж…','⏳');
   try{
-    const res=await fetch('/api/pay',{
+    const res=await fetch(API_BASE+'/api/pay',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Init-Data':tg&&tg.initData?tg.initData:''},
       body:JSON.stringify({plan:planId}),
@@ -824,7 +854,7 @@ function startPayPolling(orderId){
   _payPolling=setInterval(async()=>{
     if(++n>100){clearInterval(_payPolling);_payPolling=null;return;}
     try{
-      const r=await fetch(`/api/payment-status/${orderId}`,{headers:{'X-Init-Data':tg&&tg.initData?tg.initData:''}});
+      const r=await fetch(API_BASE+`/api/payment-status/${orderId}`,{headers:{'X-Init-Data':tg&&tg.initData?tg.initData:''}});
       if(!r.ok) return;
       const d=await r.json();
       if(d.status==='paid'){
@@ -993,6 +1023,31 @@ function openSupport(){
 document.getElementById('btnSupportTop').addEventListener('click',openSupport);
 document.getElementById('btnSupportProfile').addEventListener('click',openSupport);
 document.getElementById('btnSupportQuick').addEventListener('click',openSupport);
+
+// ── Онбординг: /api/me → 200 основной UI, 401 лендинг ──
+const API_BASE=''; // если Pages отдельно от бэкенда: 'https://api.example.com'
+const authHeaders=()=>({'X-Init-Data':tg&&tg.initData?tg.initData:''});
+function showApp(){ document.body.classList.remove('boot','landing-on'); document.getElementById('landing').hidden=true; }
+function showLanding(){ document.body.classList.remove('boot'); document.body.classList.add('landing-on'); document.getElementById('landing').hidden=false; }
+async function enter(){
+  const btns=[document.getElementById('btnRegister'),document.getElementById('btnLogin')];
+  btns.forEach(b=>b.disabled=true);
+  try{
+    const r=await fetch(API_BASE+'/api/register',{method:'POST',headers:authHeaders()});
+    if(r.ok){ haptic('success'); showApp(); }
+    else if(r.status===401) showToast('Откройте приложение через Telegram');
+    else showToast('Сервер недоступен, попробуйте позже');
+  }catch(e){ showToast('Нет соединения с сервером'); }
+  btns.forEach(b=>b.disabled=false);
+}
+document.getElementById('btnRegister').addEventListener('click',enter);
+document.getElementById('btnLogin').addEventListener('click',enter);
+(async function boot(){
+  try{
+    const r=await fetch(API_BASE+'/api/me',{headers:authHeaders()});
+    if(r.status===401) showLanding(); else showApp();
+  }catch(e){ showApp(); } // бэкенд недоступен — демо-режим
+})();
 
 applySettings();
 </script>

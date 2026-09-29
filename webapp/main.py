@@ -37,6 +37,7 @@ from db.repo import (
     add_support_message,
     generate_key,
     get_or_create_user,
+    get_user_by_tg_id,
     grant_subscription,
     list_keys,
 )
@@ -155,9 +156,7 @@ async def index(request: Request) -> HTMLResponse:
 
 # ── API ────────────────────────────────────────────────────────────
 
-@app.get("/api/me")
-@limiter.limit("60/minute")
-async def api_me(request: Request, user=Depends(current_user)) -> dict:
+def _me_payload(user) -> dict:
     sub = user.subscription
     return {
         "tg_id": user.tg_id,
@@ -174,6 +173,51 @@ async def api_me(request: Request, user=Depends(current_user)) -> dict:
             else None
         ),
     }
+
+
+def _tg_identity(x_init_data: str | None) -> dict:
+    """Проверенный Telegram-пользователь из initData (DEBUG: ADMIN_ID). Иначе 401."""
+    parsed = verify_init_data(x_init_data) if x_init_data else None
+    if parsed and parsed.get("user"):
+        return parsed["user"]
+    if settings.is_prod:
+        raise HTTPException(status_code=401, detail="unauthorized")
+    return {"id": settings.ADMIN_ID, "username": "admin", "first_name": "Admin"}
+
+
+@app.get("/api/me")
+@limiter.limit("60/minute")
+async def api_me(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    x_init_data: str | None = Header(default=None, alias="X-Init-Data"),
+) -> dict:
+    """Профиль зарегистрированного юзера. Нет записи в БД — 401 (показываем лендинг)."""
+    tg_user = _tg_identity(x_init_data)
+    user = await get_user_by_tg_id(session, int(tg_user["id"]))
+    if user is None:
+        raise HTTPException(status_code=401, detail="unauthorized")
+    return _me_payload(user)
+
+
+@app.post("/api/register")
+@limiter.limit("10/minute")
+async def api_register(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    x_init_data: str | None = Header(default=None, alias="X-Init-Data"),
+) -> dict:
+    """Регистрация (идемпотентно): создаёт запись, если её ещё нет."""
+    tg_user = _tg_identity(x_init_data)
+    user = await get_or_create_user(
+        session,
+        tg_id=int(tg_user["id"]),
+        username=tg_user.get("username"),
+        full_name=" ".join(
+            filter(None, [tg_user.get("first_name"), tg_user.get("last_name")])
+        ) or None,
+    )
+    return _me_payload(user)
 
 
 @app.get("/api/plans")
