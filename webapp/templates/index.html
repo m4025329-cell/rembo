@@ -509,6 +509,11 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
   <!-- ============ KEYS ============ -->
   <section class="sec" id="sec-keys">
     <h2 class="sec-title">Мои ключи</h2>
+    <button class="btn btn-primary ripple" id="btnNewKey" style="margin-bottom:14px">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Создать ключ
+    </button>
+    <div class="action-sub" id="newKeyHint" style="display:none;margin:-8px 2px 14px">Нужна активная подписка — выберите тариф</div>
     <div class="stagger" id="keysList"></div>
     <div class="card">
       <h3>Как подключить в Happ</h3>
@@ -520,6 +525,19 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
       </ol>
     </div>
   </section>
+
+  <!-- ============ MODAL: выбор сервера для нового ключа ============ -->
+  <div id="serverModal" hidden style="position:fixed;inset:0;z-index:150;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6)">
+    <div style="width:100%;max-width:540px;background:var(--bg-2);border-radius:22px 22px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));max-height:80vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h3 style="margin:0">Выберите сервер</h3>
+        <button class="icon-btn" id="btnCloseModal" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="modalServerList"></div>
+    </div>
+  </div>
 
   <!-- ============ PARTNERS ============ -->
   <section class="sec" id="sec-partners">
@@ -1069,6 +1087,56 @@ function renderKeys(){
   });
 }
 
+// ── Создание ключа: модалка выбора сервера ──
+function openServerModal(){
+  var list=document.getElementById('modalServerList');
+  list.innerHTML='';
+  SERVERS.forEach(function(s){
+    var row=document.createElement('div');
+    row.className='server-row ripple';
+    row.style.cursor='pointer';
+    row.innerHTML=
+      '<div class="server-flag">'+s.flag+'</div>'+
+      '<div class="server-body"><div class="server-name">'+s.name+'</div></div>'+
+      '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+    row.addEventListener('click',function(){ generateKey(s.code); });
+    list.appendChild(row);
+  });
+  document.getElementById('serverModal').hidden=false;
+}
+function closeServerModal(){ document.getElementById('serverModal').hidden=true; }
+document.getElementById('btnCloseModal').addEventListener('click',closeServerModal);
+document.getElementById('serverModal').addEventListener('click',function(e){
+  if(e.target.id==='serverModal') closeServerModal();
+});
+document.getElementById('btnNewKey').addEventListener('click',function(){
+  if(!currentUserData || !currentUserData.is_subscribed){
+    showToast('Нужна активная подписка, чтобы создать ключ');
+    haptic('error');
+    return;
+  }
+  haptic('select');
+  openServerModal();
+});
+function generateKey(country){
+  closeServerModal();
+  showToast('Создаём ключ…');
+  fetch('/api/keys',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-Init-Data':initHeader()},
+    body:JSON.stringify({country:country}),
+  }).then(function(res){
+    return res.json().then(function(data){
+      if(!res.ok) throw new Error(data.detail||'Не удалось создать ключ');
+      userKeys=[data].concat(userKeys);
+      renderKeys();
+      showToast('Ключ создан'); haptic('success');
+    });
+  }).catch(function(err){
+    showToast(err.message||'Ошибка создания ключа'); haptic('error');
+  });
+}
+
 // ── Profile + referral links ──
 function fillProfile(userData){
   var u=tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
@@ -1126,6 +1194,8 @@ function updateSubscription(userData){
     pfSubTitle.textContent='Подписка активна';
     pfSubSub.textContent='до '+fmt+' · осталось '+daysLeft+' дней';
     accountState.classList.remove('inactive');
+    document.getElementById('btnNewKey').disabled=false;
+    document.getElementById('newKeyHint').style.display='none';
   }else{
     statusPill.classList.add('inactive');
     statusText.textContent='Нет подписки';
@@ -1138,7 +1208,10 @@ function updateSubscription(userData){
     pfSubTitle.textContent='Нет подписки';
     pfSubSub.textContent='Выберите тариф для подключения';
     accountState.classList.add('inactive');
+    document.getElementById('btnNewKey').disabled=true;
+    document.getElementById('newKeyHint').style.display='block';
   }
+  renderPlans(); // подпись кнопок (Оплатить/Продлить) зависит от текущей подписки
 }
 
 // ── Load user data from API ──
@@ -1149,10 +1222,12 @@ function loadUserData(){
     return res.json();
   })
   .then(function(data){
+    currentUserData=data;
     fillProfile(data);
     updateSubscription(data);
   })
   .catch(function(){
+    currentUserData=null;
     fillProfile(null);
     updateSubscription(null);
   });
