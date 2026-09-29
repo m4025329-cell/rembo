@@ -554,7 +554,7 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
   </section>
 
   <!-- ============ MODAL: выбор сервера для нового ключа ============ -->
-  <div id="serverModal" hidden style="position:fixed;inset:0;z-index:150;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6)">
+  <div id="serverModal" style="position:fixed;inset:0;z-index:150;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6)">
     <div style="width:100%;max-width:540px;background:var(--bg-2);border-radius:22px 22px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));max-height:80vh;overflow-y:auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <h3 style="margin:0">Выберите сервер</h3>
@@ -1239,9 +1239,9 @@ function openServerModal(){
     row.addEventListener('click',function(){ generateKey(s.code); });
     list.appendChild(row);
   });
-  document.getElementById('serverModal').hidden=false;
+  document.getElementById('serverModal').style.display='flex';
 }
-function closeServerModal(){ document.getElementById('serverModal').hidden=true; }
+function closeServerModal(){ document.getElementById('serverModal').style.display='none'; }
 document.getElementById('btnCloseModal').addEventListener('click',closeServerModal);
 document.getElementById('serverModal').addEventListener('click',function(e){
   if(e.target.id==='serverModal') closeServerModal();
