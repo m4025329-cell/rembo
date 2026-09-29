@@ -509,7 +509,7 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
         <div class="qr-share">
           <div class="qr-mini" id="shareQr"></div>
           <div class="share-link mono" id="shareLink">t.me/BlackLotusVPNBot?start=ref_demo</div>
-          <div class="copy-mini" id="btnCopyShare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div>
+          <div class="copy-mini" id="btnCopyShare" role="button" tabindex="0" aria-label="Скопировать реферальную ссылку"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div>
         </div>
       </div>
 
@@ -591,7 +591,7 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
         <div class="qr-share">
           <div class="qr-mini" id="refQr"></div>
           <div class="share-link mono" id="refLink">t.me/BlackLotusVPNBot?start=ref_demo</div>
-          <div class="copy-mini" id="btnCopyRef"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div>
+          <div class="copy-mini" id="btnCopyRef" role="button" tabindex="0" aria-label="Скопировать партнёрскую ссылку"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div>
         </div>
       </div>
 
@@ -703,15 +703,15 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
     <div class="card" style="padding:6px 14px">
       <div class="toggle-row">
         <div><div class="toggle-title">Усиленный контраст</div><div class="toggle-sub">Ярче границы и текст</div></div>
-        <div class="switch" id="swContrast"><div class="knob"></div></div>
+        <div class="switch" id="swContrast" role="switch" aria-checked="false" tabindex="0" aria-label="Усиленный контраст"><div class="knob"></div></div>
       </div>
       <div class="toggle-row">
         <div><div class="toggle-title">Анимации</div><div class="toggle-sub">Плавные переходы и ripple</div></div>
-        <div class="switch on" id="swAnims"><div class="knob"></div></div>
+        <div class="switch on" id="swAnims" role="switch" aria-checked="true" tabindex="0" aria-label="Анимации"><div class="knob"></div></div>
       </div>
       <div class="toggle-row">
         <div><div class="toggle-title">Виброотклик</div><div class="toggle-sub">Haptic при нажатиях в Telegram</div></div>
-        <div class="switch on" id="swHaptics"><div class="knob"></div></div>
+        <div class="switch on" id="swHaptics" role="switch" aria-checked="true" tabindex="0" aria-label="Виброотклик"><div class="knob"></div></div>
       </div>
     </div>
   </section>
@@ -725,7 +725,7 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
     <h2 class="sec-title">Уведомления</h2>
     <div class="toggle-row" style="padding:0 2px 14px;border:none">
       <div><div class="toggle-title">Push-уведомления</div><div class="toggle-sub">Получать в Telegram</div></div>
-      <div class="switch on" id="swPush"><div class="knob"></div></div>
+      <div class="switch on" id="swPush" role="switch" aria-checked="true" tabindex="0" aria-label="Push-уведомления"><div class="knob"></div></div>
     </div>
     <div class="notif-tabs">
       <div class="notif-tab active" data-notif-tab="unread">Непрочитанные <span class="count" id="unreadCount">0</span></div>
@@ -741,12 +741,12 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
 
 </main>
 
-<nav class="tabbar">
-  <button class="tabbtn active" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Главная</span></button>
-  <button class="tabbtn" data-tab="plans"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg><span>Тарифы</span></button>
-  <button class="tabbtn" data-tab="keys"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m10.5 12.5 8-8M16 6l2 2M19 3l2 2"/></svg><span>Ключи</span></button>
-  <button class="tabbtn" data-tab="partners"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="18" cy="8.5" r="2.4"/><path d="M16.5 14.3c2.5.4 4.2 2.1 4.8 5.2"/></svg><span>Партнёры</span></button>
-  <button class="tabbtn" data-tab="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg><span>Профиль</span></button>
+<nav class="tabbar" role="tablist" aria-label="Разделы приложения">
+  <button class="tabbtn active" data-tab="home" role="tab" aria-selected="true" aria-label="Главная"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Главная</span></button>
+  <button class="tabbtn" data-tab="plans" role="tab" aria-selected="false" aria-label="Тарифы"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg><span>Тарифы</span></button>
+  <button class="tabbtn" data-tab="keys" role="tab" aria-selected="false" aria-label="Ключи"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m10.5 12.5 8-8M16 6l2 2M19 3l2 2"/></svg><span>Ключи</span></button>
+  <button class="tabbtn" data-tab="partners" role="tab" aria-selected="false" aria-label="Партнёры"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="18" cy="8.5" r="2.4"/><path d="M16.5 14.3c2.5.4 4.2 2.1 4.8 5.2"/></svg><span>Партнёры</span></button>
+  <button class="tabbtn" data-tab="profile" role="tab" aria-selected="false" aria-label="Профиль"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg><span>Профиль</span></button>
 </nav>
 
 <script>
@@ -786,6 +786,10 @@ function applySettings(){
   document.getElementById('swAnims').classList.toggle('on', uiSettings.anims);
   document.getElementById('swHaptics').classList.toggle('on', uiSettings.haptics);
   document.getElementById('swPush').classList.toggle('on', uiSettings.push);
+  document.getElementById('swContrast').setAttribute('aria-checked', String(!!uiSettings.contrast));
+  document.getElementById('swAnims').setAttribute('aria-checked', String(!!uiSettings.anims));
+  document.getElementById('swHaptics').setAttribute('aria-checked', String(!!uiSettings.haptics));
+  document.getElementById('swPush').setAttribute('aria-checked', String(!!uiSettings.push));
 }
 
 function haptic(kind){
@@ -931,8 +935,11 @@ document.getElementById('liftSlider').addEventListener('input', function(e){
   uiSettings.lift=Number(e.target.value); saveSettings(uiSettings); applySettings();
 });
 function bindSwitch(id,key){
-  document.getElementById(id).addEventListener('click',function(){
-    uiSettings[key]=!uiSettings[key]; saveSettings(uiSettings); applySettings(); haptic('select');
+  var toggle=function(){ uiSettings[key]=!uiSettings[key]; saveSettings(uiSettings); applySettings(); haptic('select'); };
+  var el=document.getElementById(id);
+  el.addEventListener('click', toggle);
+  el.addEventListener('keydown', function(e){
+    if(e.key===' '||e.key==='Enter'){ e.preventDefault(); toggle(); }
   });
 }
 bindSwitch('swContrast','contrast'); bindSwitch('swAnims','anims'); bindSwitch('swHaptics','haptics'); bindSwitch('swPush','push');
