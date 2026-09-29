@@ -57,6 +57,11 @@ async def get_or_create_user(
         session.add(user)
         await session.commit()
         await session.refresh(user)
+        # refresh() подгружает только колонки, не relationships — без этого
+        # первое же обращение к user.subscription лениво лезет в БД вне
+        # greenlet-контекста и падает 500 (SQLAlchemy async lazy-load).
+        # У только что созданного юзера подписки гарантированно нет.
+        user.subscription = None
         user._is_new = True  # ponytail: transient flag, not persisted
     else:
         # Sync profile — Telegram names change
