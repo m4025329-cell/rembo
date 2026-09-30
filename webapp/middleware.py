@@ -5,18 +5,23 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 
-# CSP: разрешаем telegram.org (SDK), Google Fonts (шрифты), self.
-_CSP = (
-    "default-src 'self'; "
-    "script-src 'self' https://telegram.org; "
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-    "font-src 'self' https://fonts.gstatic.com; "
-    "img-src 'self' data:; "
-    "connect-src 'self'; "
-    "frame-ancestors https://web.telegram.org https://*.telegram.org; "
-    "base-uri 'self'; "
-    "object-src 'none';"
-)
+# CSP: telegram.org (SDK), cdnjs (qrcode-generator), Google Fonts, self.
+# Inline-скрипт мини-приложения разрешён только по nonce (генерируется на запрос в index()).
+def _csp(nonce: str | None) -> str:
+    script_src = "'self' https://telegram.org https://cdnjs.cloudflare.com"
+    if nonce:
+        script_src += f" 'nonce-{nonce}'"
+    return (
+        "default-src 'self'; "
+        f"script-src {script_src}; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors https://web.telegram.org https://*.telegram.org; "
+        "base-uri 'self'; "
+        "object-src 'none';"
+    )
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -40,7 +45,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "Permissions-Policy",
             "geolocation=(), microphone=(), camera=(), payment=()",
         )
-        headers.setdefault("Content-Security-Policy", _CSP)
+        headers.setdefault(
+            "Content-Security-Policy", _csp(getattr(request.state, "csp_nonce", None))
+        )
         headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
         headers.setdefault("Cross-Origin-Resource-Policy", "same-site")
         return response

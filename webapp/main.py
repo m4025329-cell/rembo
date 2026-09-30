@@ -11,6 +11,7 @@ Dev-режим (DEBUG=true) разрешает работу без initData от
 в проде обязательно DEBUG=false.
 """
 import logging
+import secrets
 from datetime import datetime
 from pathlib import Path
 
@@ -151,7 +152,12 @@ async def unhandled_exception(request: Request, exc: Exception):
 @app.get("/", response_class=HTMLResponse)
 @limiter.limit("60/minute")
 async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("index.html", {"request": request})
+    # nonce разрешает единственный inline-скрипт шаблона (см. webapp/middleware.py)
+    nonce = secrets.token_urlsafe(16)
+    request.state.csp_nonce = nonce
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "csp_nonce": nonce}
+    )
 
 
 # ── API ────────────────────────────────────────────────────────────

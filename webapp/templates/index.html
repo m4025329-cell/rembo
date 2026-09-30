@@ -85,12 +85,6 @@ main{position:relative;z-index:1;padding:4px 16px 20px}
 .sec{display:none;padding-bottom:20px}
 .sec.active{display:block;animation:secIn .35s var(--ease)}
 @keyframes secIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.stagger>*{animation:rise .45s var(--ease) both}
-.stagger>*:nth-child(1){animation-delay:.02s}.stagger>*:nth-child(2){animation-delay:.06s}
-.stagger>*:nth-child(3){animation-delay:.10s}.stagger>*:nth-child(4){animation-delay:.14s}
-.stagger>*:nth-child(5){animation-delay:.18s}.stagger>*:nth-child(6){animation-delay:.22s}
-.stagger>*:nth-child(7){animation-delay:.26s}
-@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .sec-title{font-weight:800;font-size:22px;letter-spacing:-.02em;margin:8px 2px 14px}
 .muted{color:var(--muted);font-size:13px}
 .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
@@ -341,7 +335,7 @@ ol.steps li{display:flex;gap:12px;font-size:13px;line-height:1.5}
 /* ===== Tab bar ===== */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:2px;
   padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));
-  background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(20px) saturate(160%);
+  background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(20px) saturate(160%);
   border-top:1px solid var(--border)}
 .tabbtn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 3px;
   border:none;border-radius:12px;background:transparent;color:var(--muted-2);cursor:pointer;
@@ -370,6 +364,28 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
 .sec.slide-in-r{animation:slideInR .3s var(--ease)}
 @keyframes slideInL{from{opacity:0;transform:translateX(-22px)}to{opacity:1;transform:none}}
 @keyframes slideInR{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+
+/* ===== Motion pack (ui-ux-pro-max presets: transform/opacity only) ===== */
+.switch .knob{transition:transform .38s cubic-bezier(.34,1.56,.64,1)}
+.toast{transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
+.server-row,.quick-card,.key-card{transition:transform .2s var(--ease),border-color .2s,box-shadow .2s}
+.hero .btn-primary{transition:transform .15s var(--ease),box-shadow .2s,filter .2s,translate .35s var(--ease)}
+.hero{transition:transform .35s var(--ease)}
+.plan-card.sel{animation:selPulse .55s var(--ease)}
+@keyframes selPulse{0%{box-shadow:0 0 0 0 var(--glow-a)}100%{box-shadow:0 0 0 14px transparent}}
+.key-btn.copied svg{animation:popIn .45s cubic-bezier(.34,1.56,.64,1)}
+@keyframes popIn{0%{transform:scale(0) rotate(-40deg)}100%{transform:none}}
+@media(hover:hover) and (pointer:fine){
+  .action-card:hover,.plan-card:hover,.quick-card:hover,.server-row:hover,.key-card:hover{transform:translateY(-3px);border-color:var(--border-hi)}
+  .icon-btn:hover{border-color:var(--border-hi);transform:translateY(-1px)}
+  .action-card:active,.plan-card:active,.quick-card:active{transform:scale(.99)}
+}
+@media(prefers-reduced-motion:no-preference){
+  html:not(.no-anim) .hero .btn-primary{animation:ctaGlow 3.4s ease-in-out infinite}
+  html:not(.no-anim) .brand-mark{animation:markFloat 6s ease-in-out infinite}
+}
+@keyframes ctaGlow{0%,100%{box-shadow:0 8px 24px -6px var(--glow-a)}50%{box-shadow:0 10px 34px -4px var(--glow-a)}}
+@keyframes markFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
 </style>
 </head>
 <body>
@@ -705,7 +721,7 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
   <button class="tabbtn" data-tab="profile" role="tab" aria-selected="false" aria-label="Профиль"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg><span>Профиль</span></button>
 </nav>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 'use strict';
 var tg = window.Telegram && window.Telegram.WebApp;
 var SUPPORT_USERNAME = 'Slavaprivet';
@@ -1345,10 +1361,10 @@ function loadUserKeys(){
 function initApp(){
   Promise.all([loadUserData(), loadUserKeys()])
   .then(function(){
-    document.body.classList.add('loaded');
+    document.body.classList.add('loaded'); M.intro();
   })
   .catch(function(){
-    document.body.classList.add('loaded');
+    document.body.classList.add('loaded'); M.intro();
   });
 }
 
@@ -1396,6 +1412,102 @@ document.getElementById('btnLogout').addEventListener('click',function(){
   }
 });
 document.getElementById('btnSupportQuick').addEventListener('click',openSupport);
+
+// ── Motion pack: ui-ux-pro-max GSAP presets ported to WAAPI (no dependency, CSP-safe) ──
+var M=(function(){
+  var rm=window.matchMedia('(prefers-reduced-motion: reduce)');
+  var OUT='cubic-bezier(.22,1,.36,1)', BACK='cubic-bezier(.34,1.56,.64,1)';
+  function ok(){ return uiSettings.anims && !rm.matches && !document.hidden && !!Element.prototype.animate; }
+  function go(el,frames,opt){
+    if(!el || !ok()) return;
+    return el.animate(frames,Object.assign({duration:300,easing:OUT,fill:'backwards'},opt));
+  }
+  // Stagger List + Scroll Reveal: visible items stagger in, offscreen ones reveal on entry (max ~8 per wave)
+  var io=('IntersectionObserver' in window) ? new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ io.unobserve(e.target); reveal(e.target,0); } });
+  },{rootMargin:'0px 0px -40px 0px'}) : null;
+  function reveal(el,i){ go(el,[{opacity:0,transform:'translateY(16px) scale(.98)'},{opacity:1,transform:'none'}],{duration:440,delay:i*50}); }
+  function stagger(list){
+    var vis=0;
+    Array.prototype.forEach.call(list,function(el){
+      var below=el.getBoundingClientRect().top>window.innerHeight-40;
+      if(below && io && ok()) io.observe(el); else reveal(el,Math.min(vis++,8));
+    });
+  }
+  // Counter: expo-out count-up
+  function count(el){
+    if(!el) return;
+    var txt=el.textContent, end=parseInt(txt,10);
+    if(!ok() || !isFinite(end) || end<=0) return;
+    var t0=performance.now(), dur=900;
+    (function tick(t){
+      var p=Math.min(1,(t-t0)/dur);
+      el.textContent=p===1?txt:Math.round(end*(1-Math.pow(2,-10*p)));
+      if(p<1) requestAnimationFrame(tick);
+    })(t0);
+  }
+  function fillBar(el){
+    if(!el || !ok()) return;
+    var w=el.style.width; if(!w) return;
+    el.style.transition='none'; el.style.width='0%'; void el.offsetWidth;
+    el.style.transition=''; requestAnimationFrame(function(){ el.style.width=w; });
+  }
+  function pop(el){ go(el,[{transform:'scale(1)'},{transform:'scale(1.28)'},{transform:'scale(.94)'},{transform:'scale(1)'}],{duration:440,easing:'ease-out',fill:'none'}); }
+  function wiggle(el){ go(el,[{transform:'rotate(0)'},{transform:'rotate(-14deg)'},{transform:'rotate(12deg)'},{transform:'rotate(-8deg)'},{transform:'rotate(4deg)'},{transform:'rotate(0)'}],{duration:650,fill:'none'}); }
+  // Section enter: stagger cards, grow server-load bars
+  function enter(sec){
+    if(!sec) return;
+    stagger(sec.querySelectorAll('.stagger > *, #serverList > *, #notifList > *'));
+    go(sec.querySelector('.sec-title'),[{opacity:0,transform:'translateX(-10px)'},{opacity:1,transform:'none'}],{duration:400});
+    sec.querySelectorAll('.server-load i').forEach(function(b,i){
+      b.style.transformOrigin='left';
+      go(b,[{transform:'scaleX(0)'},{transform:'scaleX(1)'}],{duration:700,delay:200+i*60});
+    });
+  }
+  function intro(){
+    go(document.querySelector('main'),[{opacity:0},{opacity:1}],{duration:350});
+    var home=document.getElementById('sec-home'); if(home){ home._act=true; enter(home); }
+    count(document.getElementById('daysLeft')); fillBar(document.getElementById('progressFill'));
+    document.querySelectorAll('.stat-tile .v').forEach(count);
+  }
+  // Class-change hooks: any code path that activates a section / tab gets the animation
+  var mainEl=document.querySelector('main'), tabbar=document.querySelector('.tabbar');
+  if(mainEl) new MutationObserver(function(ms){ ms.forEach(function(m){
+    var t=m.target; if(!t.classList || !t.classList.contains('sec')) return;
+    var on=t.classList.contains('active');
+    if(on && !t._act){ t._act=true; enter(t); } else if(!on){ t._act=false; }
+  }); }).observe(mainEl,{subtree:true,attributes:true,attributeFilter:['class']});
+  if(tabbar) new MutationObserver(function(ms){ ms.forEach(function(m){
+    var t=m.target; if(t.classList && t.classList.contains('tabbtn')){
+      var on=t.classList.contains('active');
+      if(on && !t._act){ pop(t.querySelector('svg')); } t._act=on;
+    }
+  }); }).observe(tabbar,{subtree:true,attributes:true,attributeFilter:['class']});
+  // Bell: wiggle + badge pop when unread appears
+  var badge=document.getElementById('bellBadge');
+  if(badge) new MutationObserver(function(){
+    if(badge.style.display!=='none'){ pop(badge); wiggle(document.querySelector('#btnBell svg')); }
+  }).observe(badge,{attributes:true,attributeFilter:['style']});
+  // Desktop only: hero 3D tilt (Standard) + magnetic CTA (Complex, clamped, one focal element)
+  if(window.matchMedia('(hover:hover) and (pointer:fine)').matches){
+    var hero=document.querySelector('.hero'), cta=document.querySelector('.hero .btn-primary');
+    if(hero){
+      hero.addEventListener('pointermove',function(e){
+        if(!ok()) return; var r=hero.getBoundingClientRect();
+        var x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+        hero.style.transform='perspective(900px) rotateX('+(-y*4).toFixed(2)+'deg) rotateY('+(x*5).toFixed(2)+'deg)';
+      });
+      hero.addEventListener('pointerleave',function(){ hero.style.transform=''; if(cta) cta.style.translate=''; });
+    }
+    if(cta) cta.addEventListener('pointermove',function(e){
+      if(!ok()) return; var r=cta.getBoundingClientRect();
+      var dx=Math.max(-8,Math.min(8,(e.clientX-r.left-r.width/2)*.12));
+      var dy=Math.max(-4,Math.min(4,(e.clientY-r.top-r.height/2)*.2));
+      cta.style.translate=dx+'px '+dy+'px';
+    });
+  }
+  return {intro:intro,enter:enter,pop:pop};
+})();
 
 applySettings();
 </script>
