@@ -35,6 +35,9 @@ backups/
 audit.log
 !logs/.gitkeep
 
+# ── Скачиваемые бинарники (scripts/start.sh качает cloudflared сюда) ──
+.bin/
+
 # ── Python ───────────────────────────────────────────────
 __pycache__/
 *.pyc
