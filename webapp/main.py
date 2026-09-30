@@ -155,9 +155,11 @@ async def index(request: Request) -> HTMLResponse:
     # nonce разрешает единственный inline-скрипт шаблона (см. webapp/middleware.py)
     nonce = secrets.token_urlsafe(16)
     request.state.csp_nonce = nonce
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         "index.html", {"request": request, "csp_nonce": nonce}
     )
+    resp.headers["Cache-Control"] = "no-cache"  # WebView Telegram кэширует агрессивно
+    return resp
 
 
 # ── API ────────────────────────────────────────────────────────────

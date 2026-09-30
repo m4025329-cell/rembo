@@ -1,4 +1,6 @@
 """Reply/Inline клавиатуры для бота."""
+import time
+
 from typing import Sequence
 
 from aiogram.types import (
@@ -10,6 +12,13 @@ from aiogram.types import (
 )
 
 from config import settings
+
+_BUILD = int(time.time())
+
+
+def _v(url: str) -> str:
+    """Добавить ?v=<время старта бота>: после рестарта Telegram не покажет кэш мини-аппа."""
+    return f"{url}{'&' if '?' in url else '?'}v={_BUILD}"
 from db.models import DeviceSlot
 
 
@@ -21,7 +30,7 @@ def webapp_kb(url: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text="🖤 Открыть BlackLotusVPN",
-            web_app=WebAppInfo(url=url),
+            web_app=WebAppInfo(url=_v(url)),
         )],
         [
             InlineKeyboardButton(text="💳 Тарифы",    callback_data="menu:plans"),
@@ -63,7 +72,7 @@ def access_menu_kb(has_active_sub: bool) -> InlineKeyboardMarkup:
     rows = [
         [InlineKeyboardButton(
             text="🖤 Открыть BlackLotusVPN",
-            web_app=WebAppInfo(url=settings.WEBAPP_URL),
+            web_app=WebAppInfo(url=_v(settings.WEBAPP_URL)),
         )]
     ]
     if has_active_sub:
