@@ -15,7 +15,7 @@
 :root{
   --bg:#0a0a0f; --bg-2:#0e0e15; --elev:#13131c; --card:#16161f; --card-hi:#1c1c28;
   --border:rgba(255,255,255,.07); --border-hi:rgba(255,255,255,.13);
-  --text:#f0eff4; --muted:#8b8a94; --muted-2:#5c5b66;
+  --text:#f0eff4; --muted:#9b9aa5; --muted-2:#85848f;
   --a1:#10b981; --a2:#34d399; --a3:#6ee7b7;
   --hot:#f59e0b; --hot-2:#fbbf6b;
   --ok:#10b981; --ok-glow:rgba(16,185,129,.4);
@@ -71,7 +71,7 @@ body:not(.loaded) main{display:none}
   background:var(--grad-a);box-shadow:0 4px 18px var(--glow-a)}
 .brand-name{font-weight:700;font-size:16px;letter-spacing:-.02em}
 .topbar-actions{display:flex;gap:8px}
-.icon-btn{position:relative;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+.icon-btn{position:relative;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:var(--card);border:1px solid var(--border);cursor:pointer;transition:transform .15s var(--ease),border-color .15s}
 .icon-btn:active{transform:scale(.88)}
 .icon-btn svg{width:18px;height:18px}
@@ -181,7 +181,7 @@ main{position:relative;z-index:1;padding:4px 16px 20px}
 .qr-mini{width:60px;height:60px;background:var(--bg-2);border:1px solid var(--border-hi);border-radius:10px;padding:5px;flex-shrink:0}
 .qr-mini svg{width:100%;height:100%;filter:invert(1)}
 .share-link{flex:1;min-width:0;font-size:11.5px;color:var(--muted);word-break:break-all}
-.copy-mini{width:34px;height:34px;border-radius:9px;border:1px solid var(--border-hi);background:rgba(255,255,255,.04);
+.copy-mini{width:44px;height:44px;border-radius:9px;border:1px solid var(--border-hi);background:rgba(255,255,255,.04);
   display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
 .copy-mini svg{width:15px;height:15px}
 
@@ -252,7 +252,7 @@ ol.steps li{display:flex;gap:12px;font-size:13px;line-height:1.5}
 .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .stat-tile{text-align:center;padding:14px 6px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-md)}
 .stat-tile .v{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--a3);font-variant-numeric:tabular-nums}
-.stat-tile .l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:3px}
+.stat-tile .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:3px}
 .rate-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:600;
   background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ok);border:1px solid color-mix(in srgb,var(--ok) 25%,transparent)}
 .withdraw-note{font-size:11px;color:var(--muted-2);line-height:1.5;margin-top:10px}
@@ -351,6 +351,10 @@ ol.steps li{display:flex;gap:12px;font-size:13px;line-height:1.5}
 .tabbtn:active{transform:scale(.9)}
 .tabbtn.active{color:#fff;background:var(--grad-a);box-shadow:0 4px 14px -4px var(--glow-a)}
 
+/* ===== Focus ===== */
+:focus-visible{outline:2px solid var(--a3);outline-offset:2px;border-radius:8px}
+.btn:focus-visible,.icon-btn:focus-visible,.tabbtn:focus-visible{outline-offset:3px}
+
 /* ===== Responsive ===== */
 @media(min-width:640px){
   main,.topbar,.tabbar{max-width:540px;margin:0 auto}
@@ -391,7 +395,7 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
 
 <header class="topbar">
   <div class="brand">
-    <div class="brand-mark">🪷</div>
+    <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1.8 2.4 2.7 4.7 2.7 6.9S13.6 14 12 15c-1.6-1-2.7-2.9-2.7-5.1S10.2 5.4 12 3Z"/><path d="M4 9c2.4.2 4.5 1.1 5.6 2.6M20 9c-2.4.2-4.5 1.1-5.6 2.6"/><path d="M3 15c3.4 0 6.4 1.6 9 5 2.6-3.4 5.6-5 9-5"/></svg></div>
     <span class="brand-name">BlackLotusVPN</span>
   </div>
   <div class="topbar-actions">
