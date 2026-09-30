@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0a0f" />
+<meta name="color-scheme" content="dark" />
 <title>BlackLotusVPN</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -24,30 +25,22 @@
   --glow-a:rgba(16,185,129,.35); --glow-hot:rgba(245,158,11,.28);
   --r-xl:24px; --r-lg:18px; --r-md:14px; --r-sm:10px;
   --ease:cubic-bezier(.22,1,.36,1);
-  --lift:0; --tab-h:64px;
+  --tab-h:64px;
   color-scheme:dark;
-}
-:root[data-theme="ocean"]{
-  --bg:#080b14; --bg-2:#0a0e1a; --elev:#0f1326; --card:#121830; --card-hi:#171e3a;
-  --border:rgba(100,160,255,.09); --border-hi:rgba(100,160,255,.18);
-  --a1:#0ea5e9; --a2:#38bdf8; --a3:#7dd3fc;
-  --glow-a:rgba(14,165,233,.35);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{
   font-family:'Inter',system-ui,-apple-system,sans-serif;
-  background:color-mix(in srgb,var(--bg) calc(100% - var(--lift)*1%),#fff calc(var(--lift)*1%));
+  background:var(--bg);
   color:var(--text);
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
   padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px) + 28px);
-  transition:background .3s var(--ease);
 }
 button{font-family:inherit;color:inherit}
 a{color:inherit;text-decoration:none}
 svg{display:block}
-input[type=range]{-webkit-appearance:none;appearance:none}
 
 /* ===== Background atmosphere ===== */
 .atmo{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
@@ -185,8 +178,8 @@ main{position:relative;z-index:1;padding:4px 16px 20px}
 .action-card:hover .chevron{transform:translateX(3px);color:var(--a3)}
 
 .qr-share{display:flex;align-items:center;gap:14px}
-.qr-mini{width:60px;height:60px;background:#fff;border-radius:10px;padding:5px;flex-shrink:0}
-.qr-mini svg{width:100%;height:100%}
+.qr-mini{width:60px;height:60px;background:var(--bg-2);border:1px solid var(--border-hi);border-radius:10px;padding:5px;flex-shrink:0}
+.qr-mini svg{width:100%;height:100%;filter:invert(1)}
 .share-link{flex:1;min-width:0;font-size:11.5px;color:var(--muted);word-break:break-all}
 .copy-mini{width:34px;height:34px;border-radius:9px;border:1px solid var(--border-hi);background:rgba(255,255,255,.04);
   display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
@@ -241,9 +234,9 @@ main{position:relative;z-index:1;padding:4px 16px 20px}
   transition:background .2s,border-color .2s,color .2s}
 .key-btn svg{width:14px;height:14px}
 .key-btn.copied{background:color-mix(in srgb,var(--ok) 14%,transparent);border-color:var(--ok);color:var(--ok)}
-.key-qr-wrap{display:none;justify-content:center;padding:14px;background:#fff;border-radius:12px;margin-top:12px}
+.key-qr-wrap{display:none;justify-content:center;padding:14px;background:var(--bg-2);border:1px solid var(--border-hi);border-radius:12px;margin-top:12px}
 .key-qr-wrap.show{display:flex}
-.key-qr-wrap svg{width:150px;height:150px}
+.key-qr-wrap svg{width:150px;height:150px;filter:invert(1)}
 
 .empty-state{display:flex;flex-direction:column;align-items:center;text-align:center;padding:36px 20px;gap:12px}
 .empty-state .gicon{width:56px;height:56px;border-radius:50%;background:color-mix(in srgb,var(--a1) 12%,transparent);color:var(--a3)}
@@ -307,31 +300,6 @@ ol.steps li{display:flex;gap:12px;font-size:13px;line-height:1.5}
 /* ===== Settings ===== */
 .back-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600}
 .back-row svg{width:16px;height:16px}
-.theme-opt{display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--r-md);border:1.5px solid var(--border);
-  cursor:pointer;margin-bottom:10px;transition:border-color .2s}
-.theme-opt.sel{border-color:var(--a2);background:color-mix(in srgb,var(--a1) 6%,transparent)}
-.theme-swatch{width:50px;height:36px;border-radius:8px;flex-shrink:0;position:relative;overflow:hidden;border:1px solid var(--border-hi)}
-.theme-swatch i{position:absolute;border-radius:50%;filter:blur(6px)}
-.theme-swatch.midnight{background:#0a0a0f}
-.theme-swatch.midnight i:nth-child(1){width:24px;height:24px;top:-6px;left:-4px;background:#10b981;opacity:.8}
-.theme-swatch.midnight i:nth-child(2){width:18px;height:18px;bottom:-6px;right:-4px;background:#f59e0b;opacity:.5}
-.theme-swatch.ocean{background:#080b14}
-.theme-swatch.ocean i:nth-child(1){width:24px;height:24px;top:-6px;left:-4px;background:#0ea5e9;opacity:.8}
-.theme-swatch.ocean i:nth-child(2){width:18px;height:18px;bottom:-6px;right:-4px;background:#f59e0b;opacity:.5}
-.theme-info{flex:1}
-.theme-name{font-size:13px;font-weight:600;margin-bottom:2px}
-.theme-desc{font-size:11px;color:var(--muted)}
-.theme-check{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border-hi);flex-shrink:0}
-.theme-opt.sel .theme-check{background:var(--grad-a);border-color:transparent;display:flex;align-items:center;justify-content:center}
-.theme-opt.sel .theme-check svg{width:12px;height:12px;color:#fff}
-
-.slider-row{margin-bottom:4px}
-.slider-label{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:10px}
-.slider-label span:last-child{color:var(--muted);font-weight:500;font-family:'JetBrains Mono',monospace}
-input[type=range]{width:100%;height:5px;border-radius:999px;background:rgba(255,255,255,.08);outline:none}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;
-  background:var(--grad-a);border:2px solid #fff;box-shadow:0 3px 10px var(--glow-a);cursor:pointer}
-input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--grad-a);border:2px solid #fff;cursor:pointer}
 
 .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 2px}
 .toggle-row+.toggle-row{border-top:1px solid var(--border)}
@@ -684,27 +652,6 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
     <h2 class="sec-title">Дизайн и эффекты</h2>
     <p class="muted" style="margin:-6px 2px 16px">Изменения видны сразу и сохраняются на устройстве.</p>
 
-    <div class="card">
-      <h3>Тема</h3>
-      <div class="theme-opt" data-theme-opt="midnight">
-        <div class="theme-swatch midnight"><i></i><i></i></div>
-        <div class="theme-info"><div class="theme-name">Полночь</div><div class="theme-desc">Глубокий чёрный и изумрудные блики</div></div>
-        <div class="theme-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
-      </div>
-      <div class="theme-opt" data-theme-opt="ocean">
-        <div class="theme-swatch ocean"><i></i><i></i></div>
-        <div class="theme-info"><div class="theme-name">Океан</div><div class="theme-desc">Холодный голубой оттенок</div></div>
-        <div class="theme-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="slider-row">
-        <div class="slider-label"><span>Осветление фона</span><span id="liftVal">0%</span></div>
-        <input type="range" id="liftSlider" min="0" max="100" value="0" />
-      </div>
-    </div>
-
     <div class="card" style="padding:6px 14px">
       <div class="toggle-row">
         <div><div class="toggle-title">Усиленный контраст</div><div class="toggle-sub">Ярче границы и текст</div></div>
@@ -759,8 +706,8 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
 var tg = window.Telegram && window.Telegram.WebApp;
 var SUPPORT_USERNAME = 'Slavaprivet';
 
-// ── Settings (theme/brightness/toggles), persisted in localStorage ──
-var DEFAULTS = { theme:'midnight', lift:0, contrast:false, anims:true, haptics:true, push:true };
+// ── Settings (toggles only — тема всегда midnight, фон не осветляется), persisted in localStorage ──
+var DEFAULTS = { contrast:false, anims:true, haptics:true, push:true };
 function loadSettings(){
   try{
     var raw = localStorage.getItem('blvpn:settings');
@@ -773,20 +720,9 @@ function saveSettings(s){
 var uiSettings = loadSettings();
 
 function applySettings(){
-  var themeMap = { midnight:'', ocean:'ocean' };
-  var attr = themeMap[uiSettings.theme] || '';
-  document.documentElement.setAttribute('data-theme', attr);
-  document.documentElement.style.setProperty('--lift', uiSettings.lift);
   document.documentElement.classList.toggle('hc', !!uiSettings.contrast);
   document.documentElement.classList.toggle('no-anim', !uiSettings.anims);
 
-  document.querySelectorAll('[data-theme-opt]').forEach(function(el){
-    el.classList.toggle('sel', el.dataset.themeOpt === uiSettings.theme);
-  });
-  var liftSlider = document.getElementById('liftSlider');
-  var liftVal = document.getElementById('liftVal');
-  if(liftSlider) liftSlider.value = uiSettings.lift;
-  if(liftVal) liftVal.textContent = uiSettings.lift + '%';
   document.getElementById('swContrast').classList.toggle('on', uiSettings.contrast);
   document.getElementById('swAnims').classList.toggle('on', uiSettings.anims);
   document.getElementById('swHaptics').classList.toggle('on', uiSettings.haptics);
@@ -854,7 +790,7 @@ function copyTextFallback(v){
 }
 
 // ── Ripple ──
-document.querySelectorAll('.btn,.plan-card,.server-row,.action-card,.list-row,.quick-card,.theme-opt,.key-btn')
+document.querySelectorAll('.btn,.plan-card,.server-row,.action-card,.list-row,.quick-card,.key-btn')
   .forEach(function(el){el.classList.add('ripple');});
 document.addEventListener('click', function(e){
   if(!uiSettings.anims) return;
@@ -961,15 +897,7 @@ document.querySelectorAll('[data-notif-tab]').forEach(function(el){
   });
 });
 
-// ── Theme / brightness / toggles ──
-document.querySelectorAll('[data-theme-opt]').forEach(function(el){
-  el.addEventListener('click',function(){
-    uiSettings.theme=el.dataset.themeOpt; saveSettings(uiSettings); applySettings(); haptic('select');
-  });
-});
-document.getElementById('liftSlider').addEventListener('input', function(e){
-  uiSettings.lift=Number(e.target.value); saveSettings(uiSettings); applySettings();
-});
+// ── Toggles ──
 function bindSwitch(id,key){
   var toggle=function(){ uiSettings[key]=!uiSettings[key]; saveSettings(uiSettings); applySettings(); haptic('select'); };
   var el=document.getElementById(id);
