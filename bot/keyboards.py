@@ -1,11 +1,16 @@
 """Reply/Inline клавиатуры для бота."""
+from typing import Sequence
+
 from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
     WebAppInfo,
 )
 
 from config import settings
+from db.models import DeviceSlot
 
 
 def webapp_kb(url: str) -> InlineKeyboardMarkup:
@@ -73,6 +78,53 @@ def add_device_kb() -> InlineKeyboardMarkup:
     """Заглушка кнопки оплаты доп. устройства."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💳 Оплатить", callback_data="pay_device")]
+    ])
+
+
+def footer_kb() -> ReplyKeyboardMarkup:
+    """
+    Компактная persistent-клавиатура по умолчанию (как у LumaVPN):
+    короткая полоска снизу с раскрытием в полное меню по «☰ Меню».
+    """
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text="👤 Профиль"),
+                KeyboardButton(text="💸 Партнёрка"),
+                KeyboardButton(text="☰ Меню"),
+            ],
+        ],
+        resize_keyboard=True,
+        is_persistent=True,
+    )
+
+
+def full_menu_kb() -> ReplyKeyboardMarkup:
+    """Полное reply-меню — открывается кнопкой «☰ Меню» из footer_kb()."""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=f"🖤 {settings.SERVICE_NAME} ЛК")],
+            [KeyboardButton(text="🔌 Подключить VPN")],
+            [KeyboardButton(text="➕ Докупить устройства")],
+            [KeyboardButton(text="🗑 Удаление устройств")],
+            [
+                KeyboardButton(text="🎁 Подарить подписку"),
+                KeyboardButton(text="💸 Партнёрка"),
+            ],
+            [KeyboardButton(text="📤 Поделиться подпиской")],
+            [KeyboardButton(text="ℹ️ О сервисе")],
+        ],
+        resize_keyboard=True,
+        is_persistent=True,
+    )
+
+
+def devices_list_kb(devices: Sequence[DeviceSlot]) -> InlineKeyboardMarkup:
+    """По кнопке на каждое доп. устройство — удалить."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=f"🗑 {d.device_name}",
+                              callback_data=f"del_device:{d.id}")]
+        for d in devices
     ])
 
 

@@ -200,6 +200,31 @@ async def add_device(
     return slot
 
 
+async def list_devices(session: AsyncSession, user: User) -> list[DeviceSlot]:
+    """Все доп. устройства пользователя, свежие вверху."""
+    result = await session.execute(
+        select(DeviceSlot)
+        .where(DeviceSlot.access_id == user.id)
+        .order_by(DeviceSlot.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def remove_device(session: AsyncSession, user: User, slot_id: int) -> bool:
+    """Удалить слот доп. устройства. True, если что-то удалено."""
+    result = await session.execute(
+        select(DeviceSlot).where(
+            DeviceSlot.id == slot_id, DeviceSlot.access_id == user.id
+        )
+    )
+    slot = result.scalar_one_or_none()
+    if slot is None:
+        return False
+    await session.delete(slot)
+    await session.commit()
+    return True
+
+
 # ------------------------- Поддержка -------------------------
 
 async def add_support_message(
