@@ -21,10 +21,17 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Telegram user_id — уникальный идентификатор пользователя в TG
-    tg_id: Mapped[int] = mapped_column(Integer, unique=True, index=True)
+    # Telegram user_id — для юзеров, пришедших из бота. NULL для тех, кто
+    # зарегистрировался через сайт по почте/телефону и ни разу не открывал бота.
+    tg_id: Mapped[int | None] = mapped_column(Integer, unique=True, index=True, nullable=True)
     username: Mapped[str | None] = mapped_column(String(64), nullable=True)
     full_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Вход по почте/телефону (личный кабинет вне Telegram)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     # Дата первой регистрации в боте
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     # Флаг активной подписки (упрощённо; детали в Subscription)
@@ -111,6 +118,22 @@ class Payment(Base):
     paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user: Mapped[User] = relationship()
+
+
+class VerificationCode(Base):
+    """
+    Код подтверждения регистрации по почте/телефону.
+    Короткоживущий (см. db/auth_repo.CODE_TTL_MINUTES), хранится хешем.
+    """
+    __tablename__ = "verification_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    channel: Mapped[str] = mapped_column(String(8))  # 'email' | 'phone'
+    target: Mapped[str] = mapped_column(String(255), index=True)
+    code_hash: Mapped[str] = mapped_column(String(255))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class SupportMessage(Base):

@@ -66,6 +66,18 @@ class Settings(BaseSettings):
     XUI_REALITY_SNI: str = "www.microsoft.com"
     XUI_FLOW: str = "xtls-rprx-vision"
 
+    # ── Email (подтверждение регистрации по почте) ───────────────────
+    # Пока не заполнено — код верификации пишется в лог вместо письма (dev).
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+
+    # ── SMS (подтверждение регистрации по телефону, sms.ru) ──────────
+    # Пока не заполнено — код верификации пишется в лог вместо SMS (dev).
+    SMS_RU_API_ID: str = ""
+
     # ── Прочие секреты ─────────────────────────────────────────────
     JWT_SECRET: str = Field(..., min_length=16)
     PAYMENT_SECRET: str = ""
@@ -162,6 +174,16 @@ class Settings(BaseSettings):
         return bool(self.WEBAPP_URL) and "example.com" not in self.WEBAPP_URL
 
     @property
+    def has_smtp(self) -> bool:
+        """SMTP настроен — коды верификации уходят на почту, а не в лог."""
+        return bool(self.SMTP_HOST and self.SMTP_USER and self.SMTP_PASSWORD and self.SMTP_FROM)
+
+    @property
+    def has_sms(self) -> bool:
+        """sms.ru настроен — коды верификации уходят по SMS, а не в лог."""
+        return bool(self.SMS_RU_API_ID)
+
+    @property
     def has_real_vpn_panel(self) -> bool:
         """Панель 3x-ui настроена — можно выдавать реальные ключи, а не DEMO."""
         return bool(
@@ -176,7 +198,7 @@ class Settings(BaseSettings):
         for key in (
             "BOT_TOKEN", "FERNET_KEY", "JWT_SECRET", "XUI_PASSWORD",
             "PAYMENT_SECRET", "DB_PASSWORD", "ROLLYPAY_API_KEY",
-            "ROLLYPAY_SIGNING_SECRET",
+            "ROLLYPAY_SIGNING_SECRET", "SMTP_PASSWORD", "SMS_RU_API_ID",
         ):
             if d.get(key):
                 d[key] = "***"

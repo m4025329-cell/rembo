@@ -23,6 +23,8 @@ _SECRETS_PATTERNS = [
     re.compile(re.escape(settings.BOT_TOKEN)) if settings.BOT_TOKEN else None,
     re.compile(re.escape(settings.FERNET_KEY)) if settings.FERNET_KEY else None,
     re.compile(re.escape(settings.JWT_SECRET)) if settings.JWT_SECRET else None,
+    re.compile(re.escape(settings.SMTP_PASSWORD)) if settings.SMTP_PASSWORD else None,
+    re.compile(re.escape(settings.SMS_RU_API_ID)) if settings.SMS_RU_API_ID else None,
     re.compile(r"vless://[^\s'\"]+"),
     re.compile(r"vmess://[^\s'\"]+"),
     re.compile(r"Bearer\s+[A-Za-z0-9._\-]+", re.IGNORECASE),

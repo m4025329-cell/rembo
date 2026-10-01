@@ -35,18 +35,32 @@ from db.models import Payment, User
 from db.repo import (
     PLANS,
     SERVERS,
+    AuthError,
     DeviceLimitReached,
+    InvalidCode,
+    InvalidCredentials,
+    InvalidTarget,
+    NotVerified,
+    ResendCooldown,
     SubscriptionRequired,
+    TargetTaken,
     add_support_message,
     generate_key,
     get_or_create_user,
+    get_user_by_id,
     get_user_by_tg_id,
     grant_subscription,
     list_keys,
+    login_with_credentials,
+    register_with_credentials,
+    resend_code,
     revoke_key,
+    verify_registration_code,
 )
+from webapp.notify import send_verification_code
 from webapp.xui import XuiError
 from security.logging_setup import audit, setup_logging
+from security.session_tokens import create_session_token, verify_session_token
 from webapp.middleware import SecurityHeadersMiddleware
 from webapp.rollypay import create_payment, verify_webhook_signature, generate_order_id
 from webapp.tg_auth import verify_init_data
@@ -99,11 +113,13 @@ async def current_user(
     request: Request,
     session: AsyncSession = Depends(get_session),
     x_init_data: str | None = Header(default=None, alias="X-Init-Data"),
+    authorization: str | None = Header(default=None),
 ):
     """
-    Извлекает пользователя из подписанного initData Telegram WebApp.
-    В prod без валидного initData — 401.
-    В DEBUG — fallback на ADMIN_ID для локальной отладки в браузере.
+    Извлекает пользователя либо из подписанного initData Telegram WebApp,
+    либо (вне Telegram — личный кабинет по email/телефону) из сессионного
+    токена в `Authorization: Bearer <token>`.
+    В prod без того и другого — 401. В DEBUG — fallback на ADMIN_ID.
     """
     parsed = verify_init_data(x_init_data) if x_init_data else None
     if parsed and parsed.get("user"):
@@ -116,6 +132,14 @@ async def current_user(
                 filter(None, [tg_user.get("first_name"), tg_user.get("last_name")])
             ) or None,
         )
+
+    if authorization and authorization.lower().startswith("bearer "):
+        uid = verify_session_token(authorization[7:].strip())
+        if uid is not None:
+            user = await get_user_by_id(session, uid)
+            if user is not None and not user.is_banned:
+                return user
+        raise HTTPException(status_code=401, detail="unauthorized")
 
     if settings.is_prod:
         # В проде — жёстко 401, без утечки причины
@@ -174,6 +198,8 @@ def _me_payload(user) -> dict:
         "tg_id": user.tg_id,
         "username": user.username,
         "full_name": user.full_name,
+        "email": user.email,
+        "phone": user.phone,
         "is_subscribed": bool(user.is_subscribed and sub),
         "subscription": (
             {
@@ -203,8 +229,16 @@ async def api_me(
     request: Request,
     session: AsyncSession = Depends(get_session),
     x_init_data: str | None = Header(default=None, alias="X-Init-Data"),
+    authorization: str | None = Header(default=None),
 ) -> dict:
     """Профиль зарегистрированного юзера. Нет записи в БД — 401 (показываем лендинг)."""
+    if authorization and authorization.lower().startswith("bearer "):
+        uid = verify_session_token(authorization[7:].strip())
+        user = await get_user_by_id(session, uid) if uid is not None else None
+        if user is None:
+            raise HTTPException(status_code=401, detail="unauthorized")
+        return _me_payload(user)
+
     tg_user = _tg_identity(x_init_data)
     user = await get_user_by_tg_id(session, int(tg_user["id"]))
     if user is None:
@@ -230,6 +264,94 @@ async def api_register(
         ) or None,
     )
     return _me_payload(user)
+
+
+# ── Личный кабинет: вход по email/телефону (вне Telegram) ───────────
+
+class CredentialsRequest(BaseModel):
+    channel: str = Field(..., pattern=r"^(email|phone)$")
+    value: str = Field(..., min_length=3, max_length=255)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class CodeRequest(BaseModel):
+    channel: str = Field(..., pattern=r"^(email|phone)$")
+    value: str = Field(..., min_length=3, max_length=255)
+    code: str = Field(..., min_length=4, max_length=8)
+
+
+class TargetRequest(BaseModel):
+    channel: str = Field(..., pattern=r"^(email|phone)$")
+    value: str = Field(..., min_length=3, max_length=255)
+
+
+@app.post("/api/auth/register")
+@limiter.limit("5/minute")
+async def api_auth_register(request: Request, payload: CredentialsRequest,
+                             session: AsyncSession = Depends(get_session)) -> dict:
+    """Создать аккаунт (неподтверждённый) и отправить код на почту/телефон."""
+    try:
+        user, code = await register_with_credentials(
+            session, payload.channel, payload.value, payload.password
+        )
+    except TargetTaken as e:
+        raise HTTPException(409, detail=str(e))
+    except InvalidTarget as e:
+        raise HTTPException(400, detail=str(e))
+    await send_verification_code(payload.channel, payload.value, code)
+    audit(user.id, "auth_register", channel=payload.channel)
+    return {"ok": True, "requires_verification": True}
+
+
+@app.post("/api/auth/verify")
+@limiter.limit("10/minute")
+async def api_auth_verify(request: Request, payload: CodeRequest,
+                           session: AsyncSession = Depends(get_session)) -> dict:
+    """Подтвердить код и выдать сессионный токен личного кабинета."""
+    try:
+        user = await verify_registration_code(
+            session, payload.channel, payload.value, payload.code
+        )
+    except InvalidCode as e:
+        raise HTTPException(400, detail=str(e))
+    except InvalidTarget as e:
+        raise HTTPException(404, detail=str(e))
+    audit(user.id, "auth_verified", channel=payload.channel)
+    return {"ok": True, "token": create_session_token(user.id)}
+
+
+@app.post("/api/auth/resend")
+@limiter.limit("3/minute")
+async def api_auth_resend(request: Request, payload: TargetRequest,
+                           session: AsyncSession = Depends(get_session)) -> dict:
+    """Перевыслать код подтверждения (не чаще раза в минуту)."""
+    try:
+        code = await resend_code(session, payload.channel, payload.value)
+    except ResendCooldown as e:
+        raise HTTPException(429, detail=str(e))
+    except AuthError as e:
+        raise HTTPException(400, detail=str(e))
+    await send_verification_code(payload.channel, payload.value, code)
+    return {"ok": True}
+
+
+@app.post("/api/auth/login")
+@limiter.limit("10/minute")
+async def api_auth_login(request: Request, payload: CredentialsRequest,
+                          session: AsyncSession = Depends(get_session)) -> dict:
+    """Войти по почте/телефону + паролю, получить сессионный токен."""
+    try:
+        user = await login_with_credentials(
+            session, payload.channel, payload.value, payload.password
+        )
+    except NotVerified as e:
+        raise HTTPException(403, detail=str(e))
+    except InvalidCredentials as e:
+        raise HTTPException(401, detail=str(e))
+    except InvalidTarget as e:
+        raise HTTPException(400, detail=str(e))
+    audit(user.id, "auth_login", channel=payload.channel)
+    return {"ok": True, "token": create_session_token(user.id)}
 
 
 @app.get("/api/plans")

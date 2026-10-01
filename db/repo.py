@@ -2,6 +2,8 @@
 Слой доступа к данным (репозиторий).
 Здесь собраны функции, которыми пользуется и бот, и веб-приложение.
 """
+import random
+import re
 from datetime import datetime, timedelta
 from uuid import uuid4
 
@@ -10,8 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from config import settings
-from db.models import User, Subscription, VPNKey, SupportMessage, DeviceSlot
+from db.models import (
+    User, Subscription, VPNKey, SupportMessage, DeviceSlot, VerificationCode,
+)
 from security.crypto import encrypt, try_decrypt
+from security.passwords import hash_password, verify_password
 
 
 # Цена базовой подписки (руб/мес) и цена доп. устройства (руб/мес)
@@ -286,6 +291,175 @@ async def add_support_message(
     await session.commit()
     await session.refresh(msg)
     return msg
+
+
+# ------------------------- Вход по email/телефону -------------------------
+# Личный кабинет без Telegram: регистрация с паролем + код подтверждения.
+
+CODE_TTL_MINUTES = 10
+RESEND_COOLDOWN_SECONDS = 60
+MAX_CODE_ATTEMPTS = 5
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_PHONE_RE = re.compile(r"^\+?[1-9]\d{7,14}$")
+
+
+class AuthError(ValueError):
+    """Базовый класс ошибок входа/регистрации."""
+
+
+class TargetTaken(AuthError):
+    """Почта/телефон уже зарегистрированы."""
+
+
+class InvalidTarget(AuthError):
+    """Невалидный формат почты/телефона."""
+
+
+class InvalidCredentials(AuthError):
+    """Неверная почта/телефон или пароль."""
+
+
+class NotVerified(AuthError):
+    """Аккаунт создан, но код подтверждения ещё не введён."""
+
+
+class InvalidCode(AuthError):
+    """Неверный или просроченный код."""
+
+
+class ResendCooldown(AuthError):
+    """Код уже отправлялся недавно — подожди перед повторной отправкой."""
+
+
+def normalize_target(channel: str, value: str) -> str:
+    """Проверить формат и привести почту/телефон к каноническому виду."""
+    value = (value or "").strip()
+    if channel == "email":
+        value = value.lower()
+        if not _EMAIL_RE.match(value):
+            raise InvalidTarget("некорректный email")
+        return value
+    # phone: оставляем только цифры и ведущий +
+    digits = re.sub(r"[^\d+]", "", value)
+    if not _PHONE_RE.match(digits):
+        raise InvalidTarget("некорректный номер телефона")
+    return digits if digits.startswith("+") else f"+{digits}"
+
+
+async def get_user_by_id(session: AsyncSession, user_id: int) -> User | None:
+    result = await session.execute(
+        select(User).where(User.id == user_id).options(selectinload(User.subscription))
+    )
+    return result.scalar_one_or_none()
+
+
+async def _get_user_by_target(session: AsyncSession, channel: str, target: str) -> User | None:
+    col = User.email if channel == "email" else User.phone
+    result = await session.execute(select(User).where(col == target))
+    return result.scalar_one_or_none()
+
+
+async def register_with_credentials(
+    session: AsyncSession, channel: str, value: str, password: str
+) -> tuple[User, str]:
+    """
+    Создать неподтверждённого пользователя и код подтверждения.
+    Возвращает (user, code) — code отдаётся вызывающей стороне для отправки
+    письма/SMS (сама функция ничего никуда не шлёт).
+    """
+    target = normalize_target(channel, value)
+    if await _get_user_by_target(session, channel, target):
+        raise TargetTaken(f"{channel} уже зарегистрирован")
+
+    user = User(password_hash=hash_password(password))
+    setattr(user, channel, target)
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+
+    code = await _issue_code(session, channel, target)
+    return user, code
+
+
+async def resend_code(session: AsyncSession, channel: str, value: str) -> str:
+    """Перегенерировать код (с троттлингом), вернуть его для отправки."""
+    target = normalize_target(channel, value)
+    user = await _get_user_by_target(session, channel, target)
+    if user is None:
+        raise InvalidTarget("аккаунт не найден")
+    verified = user.email_verified if channel == "email" else user.phone_verified
+    if verified:
+        raise AuthError("уже подтверждено")
+    return await _issue_code(session, channel, target)
+
+
+async def _issue_code(session: AsyncSession, channel: str, target: str) -> str:
+    result = await session.execute(
+        select(VerificationCode)
+        .where(VerificationCode.channel == channel, VerificationCode.target == target)
+        .order_by(VerificationCode.created_at.desc())
+    )
+    last = result.scalars().first()
+    if last and last.created_at > datetime.utcnow() - timedelta(seconds=RESEND_COOLDOWN_SECONDS):
+        raise ResendCooldown("код уже отправлен, подожди перед повторной отправкой")
+
+    code = f"{random.randint(0, 999999):06d}"
+    row = VerificationCode(
+        channel=channel,
+        target=target,
+        code_hash=hash_password(code),
+        expires_at=datetime.utcnow() + timedelta(minutes=CODE_TTL_MINUTES),
+    )
+    session.add(row)
+    await session.commit()
+    return code
+
+
+async def verify_registration_code(
+    session: AsyncSession, channel: str, value: str, code: str
+) -> User:
+    """Проверить код, пометить канал подтверждённым. Возвращает User."""
+    target = normalize_target(channel, value)
+    result = await session.execute(
+        select(VerificationCode)
+        .where(VerificationCode.channel == channel, VerificationCode.target == target)
+        .order_by(VerificationCode.created_at.desc())
+    )
+    row = result.scalars().first()
+    if row is None or row.expires_at < datetime.utcnow():
+        raise InvalidCode("код просрочен или не найден")
+    if row.attempts >= MAX_CODE_ATTEMPTS:
+        raise InvalidCode("слишком много попыток, запроси новый код")
+    if not verify_password(code, row.code_hash):
+        row.attempts += 1
+        await session.commit()
+        raise InvalidCode("неверный код")
+
+    user = await _get_user_by_target(session, channel, target)
+    if user is None:
+        raise InvalidTarget("аккаунт не найден")
+    setattr(user, f"{channel}_verified", True)
+    await session.delete(row)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def login_with_credentials(
+    session: AsyncSession, channel: str, value: str, password: str
+) -> User:
+    """Проверить пароль, убедиться что канал подтверждён. Возвращает User."""
+    target = normalize_target(channel, value)
+    user = await _get_user_by_target(session, channel, target)
+    if user is None or not verify_password(password, user.password_hash or ""):
+        raise InvalidCredentials("неверные данные для входа")
+    verified = user.email_verified if channel == "email" else user.phone_verified
+    if not verified:
+        raise NotVerified("подтвердите аккаунт кодом из письма/SMS")
+    if user.is_banned:
+        raise InvalidCredentials("аккаунт заблокирован")
+    return user
 
 
 # ------------------------- Статистика -------------------------

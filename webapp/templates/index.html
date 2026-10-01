@@ -237,6 +237,24 @@ main{position:relative;z-index:1;padding:4px 16px 20px}
 .empty-state .gicon svg{width:24px;height:24px}
 .empty-state h4{font-size:15px;font-weight:600}
 
+/* ── Личный кабинет: вход по email/телефону (вне Telegram) ── */
+#authScreen{position:fixed;inset:0;z-index:300;background:var(--bg);display:none;
+  flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:18px}
+#authScreen.show{display:flex}
+.auth-box{width:100%;max-width:360px}
+.auth-tabs{display:flex;gap:8px;margin-bottom:16px}
+.auth-tab{flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-hi);
+  background:rgba(255,255,255,.04);color:var(--muted);font-weight:600;font-size:13px;cursor:pointer;text-align:center}
+.auth-tab.active{background:var(--grad-a);color:#fff;border-color:transparent}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.field input{width:100%;padding:12px 14px;border-radius:11px;border:1px solid var(--border-hi);
+  background:var(--bg-2);color:var(--text);font-size:15px;font-family:inherit}
+.field input:focus{outline:none;border-color:var(--a1)}
+.auth-error{color:var(--err);font-size:13px;margin:-4px 0 12px;min-height:16px}
+.auth-switch{text-align:center;font-size:13px;color:var(--muted);margin-top:14px}
+.auth-switch a{color:var(--a3);cursor:pointer;font-weight:600}
+
 ol.steps{list-style:none;display:flex;flex-direction:column;gap:10px}
 ol.steps li{display:flex;gap:12px;font-size:13px;line-height:1.5}
 .step-n{width:22px;height:22px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
@@ -541,6 +559,47 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
       </ol>
     </div>
   </section>
+
+  <!-- ============ Личный кабинет: вход по email/телефону (вне Telegram) ============ -->
+  <div id="authScreen">
+    <div class="auth-box">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:22px;font-weight:800;letter-spacing:-.01em">🖤 BlackLotusVPN</div>
+        <div class="muted" style="margin-top:4px">Личный кабинет</div>
+      </div>
+      <div class="auth-tabs">
+        <div class="auth-tab active" data-authchannel="email">Почта</div>
+        <div class="auth-tab" data-authchannel="phone">Телефон</div>
+      </div>
+
+      <!-- Шаг 1: вход или регистрация -->
+      <div id="authStepForm">
+        <div class="field">
+          <label id="authValueLabel">Email</label>
+          <input id="authValue" type="email" autocomplete="username" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label>Пароль</label>
+          <input id="authPassword" type="password" autocomplete="current-password" placeholder="Минимум 8 символов" />
+        </div>
+        <div class="auth-error" id="authError"></div>
+        <button class="btn btn-primary ripple" id="btnAuthLogin">Войти</button>
+        <div class="auth-switch">Нет аккаунта? <a id="linkToRegister">Зарегистрироваться</a></div>
+      </div>
+
+      <!-- Шаг 2: код подтверждения (после регистрации) -->
+      <div id="authStepCode" style="display:none">
+        <p class="muted" style="margin-bottom:14px" id="authCodeHint"></p>
+        <div class="field">
+          <label>Код из письма/SMS</label>
+          <input id="authCode" type="text" inputmode="numeric" maxlength="6" placeholder="000000" />
+        </div>
+        <div class="auth-error" id="authCodeError"></div>
+        <button class="btn btn-primary ripple" id="btnAuthVerify">Подтвердить</button>
+        <div class="auth-switch"><a id="linkResendCode">Отправить код ещё раз</a></div>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ MODAL: выбор сервера для нового ключа ============ -->
   <div id="serverModal" style="position:fixed;inset:0;z-index:150;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6)">
@@ -930,9 +989,22 @@ function bindSwitch(id,key){
 }
 bindSwitch('swContrast','contrast'); bindSwitch('swAnims','anims'); bindSwitch('swHaptics','haptics'); bindSwitch('swPush','push');
 
-// ── Init data header for API calls ──
+// ── Auth headers for API calls: Telegram initData внутри TG,
+// иначе Bearer-токен личного кабинета (вход по email/телефону) ──
 function initHeader(){
   return (tg && tg.initData) ? tg.initData : '';
+}
+function authToken(){
+  try{ return localStorage.getItem('blvpn:token')||''; }catch(e){ return ''; }
+}
+function setAuthToken(t){
+  try{ t ? localStorage.setItem('blvpn:token',t) : localStorage.removeItem('blvpn:token'); }catch(e){}
+}
+function authHeaders(extra){
+  var h=extra||{};
+  if(tg && tg.initData) h['X-Init-Data']=tg.initData;
+  else if(authToken()) h['Authorization']='Bearer '+authToken();
+  return h;
 }
 
 // ── Plans (fallback, перезаписывается ответом /api/plans) ──
@@ -988,7 +1060,7 @@ function buyPlan(planId){
   showToast('Создаём платёж…');
   fetch('/api/pay',{
     method:'POST',
-    headers:{'Content-Type':'application/json','X-Init-Data':initHeader()},
+    headers:authHeaders({'Content-Type':'application/json'}),
     body:JSON.stringify({plan:planId}),
   }).then(function(res){
     return res.json().then(function(data){
@@ -1014,7 +1086,7 @@ function startPayPolling(orderId){
   var n=0; if(_payPolling) clearInterval(_payPolling);
   _payPolling=setInterval(function(){
     if(++n>100){clearInterval(_payPolling);_payPolling=null;return;}
-    fetch('/api/payment-status/'+orderId,{headers:{'X-Init-Data':initHeader()}})
+    fetch('/api/payment-status/'+orderId,{headers:authHeaders()})
     .then(function(r){
       if(!r.ok) return;
       return r.json().then(function(d){
@@ -1223,7 +1295,7 @@ function generateKey(country){
   showToast('Создаём ключ…');
   fetch('/api/keys',{
     method:'POST',
-    headers:{'Content-Type':'application/json','X-Init-Data':initHeader()},
+    headers:authHeaders({'Content-Type':'application/json'}),
     body:JSON.stringify({country:country}),
   }).then(function(res){
     return res.json().then(function(data){
@@ -1240,7 +1312,7 @@ function deleteKey(id){
   if(!confirm('Удалить этот ключ? Устройство перестанет подключаться.')) return;
   fetch('/api/keys/'+id,{
     method:'DELETE',
-    headers:{'X-Init-Data':initHeader()},
+    headers:authHeaders(),
   }).then(function(res){
     if(!res.ok) throw new Error('Не удалось удалить ключ');
     userKeys=userKeys.filter(function(k){ return k.id!==id; });
@@ -1338,7 +1410,7 @@ document.getElementById('btnRetryApi').addEventListener('click',function(){
 
 // ── Load user data from API ──
 function loadUserData(){
-  return fetch('/api/me',{headers:{'X-Init-Data':initHeader()}})
+  return fetch('/api/me',{headers:authHeaders()})
   .then(function(res){
     if(res.ok){
       hideApiError();
@@ -1347,6 +1419,12 @@ function loadUserData(){
         fillProfile(data);
         updateSubscription(data);
       });
+    }
+    if(res.status===401 && !(tg && tg.initData) && authToken()){
+      // Токен личного кабинета протух/невалиден — обратно на экран входа
+      setAuthToken(null);
+      document.getElementById('authScreen').classList.add('show');
+      throw new Error('session expired');
     }
     // 401 и т.п. — юзер просто не зарегистрирован в БД, это не сбой сети
     hideApiError();
@@ -1364,7 +1442,7 @@ function loadUserData(){
 }
 
 function loadUserKeys(){
-  return fetch('/api/keys',{headers:{'X-Init-Data':initHeader()}})
+  return fetch('/api/keys',{headers:authHeaders()})
   .then(function(res){
     if(!res.ok){ lastKeysLoadFailed=true; return; }
     return res.json().then(function(data){
@@ -1392,8 +1470,119 @@ function initApp(){
   });
 }
 
-// Start loading immediately
-initApp();
+// ── Личный кабинет: вход по email/телефону (вне Telegram) ──
+var authMode='login', authChannel='email';
+
+function authValueInput(){ return document.getElementById('authValue'); }
+function setAuthChannel(ch){
+  authChannel=ch;
+  document.querySelectorAll('[data-authchannel]').forEach(function(t){
+    t.classList.toggle('active', t.dataset.authchannel===ch);
+  });
+  var input=authValueInput();
+  if(ch==='email'){
+    document.getElementById('authValueLabel').textContent='Email';
+    input.type='email'; input.placeholder='you@example.com';
+  }else{
+    document.getElementById('authValueLabel').textContent='Телефон';
+    input.type='tel'; input.placeholder='+79991234567';
+  }
+}
+document.querySelectorAll('[data-authchannel]').forEach(function(t){
+  t.addEventListener('click',function(){ setAuthChannel(t.dataset.authchannel); });
+});
+
+function setAuthMode(mode){
+  authMode=mode;
+  document.getElementById('btnAuthLogin').textContent = mode==='login' ? 'Войти' : 'Зарегистрироваться';
+  document.getElementById('linkToRegister').textContent = mode==='login' ? 'Зарегистрироваться' : 'Уже есть аккаунт? Войти';
+  document.getElementById('authError').textContent='';
+}
+document.getElementById('linkToRegister').addEventListener('click',function(){
+  setAuthMode(authMode==='login' ? 'register' : 'login');
+});
+
+function showAuthStep(step){
+  document.getElementById('authStepForm').style.display = step==='form' ? 'block' : 'none';
+  document.getElementById('authStepCode').style.display = step==='code' ? 'block' : 'none';
+}
+
+document.getElementById('btnAuthLogin').addEventListener('click',function(){
+  var value=authValueInput().value.trim();
+  var password=document.getElementById('authPassword').value;
+  var errEl=document.getElementById('authError');
+  errEl.textContent='';
+  if(!value || password.length<8){ errEl.textContent='Заполните поля (пароль от 8 символов)'; return; }
+  var url = authMode==='login' ? '/api/auth/login' : '/api/auth/register';
+  haptic('select');
+  fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({channel:authChannel,value:value,password:password}),
+  }).then(function(res){
+    return res.json().then(function(data){
+      if(!res.ok) throw new Error(data.detail||'Ошибка');
+      if(authMode==='register'){
+        document.getElementById('authCodeHint').textContent=
+          'Код отправлен на '+value+'. Введите его ниже.';
+        showAuthStep('code');
+      }else{
+        setAuthToken(data.token);
+        document.getElementById('authScreen').classList.remove('show');
+        initApp();
+      }
+    });
+  }).catch(function(err){
+    errEl.textContent=err.message||'Ошибка'; haptic('error');
+  });
+});
+
+document.getElementById('btnAuthVerify').addEventListener('click',function(){
+  var value=authValueInput().value.trim();
+  var code=document.getElementById('authCode').value.trim();
+  var errEl=document.getElementById('authCodeError');
+  errEl.textContent='';
+  haptic('select');
+  fetch('/api/auth/verify',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({channel:authChannel,value:value,code:code}),
+  }).then(function(res){
+    return res.json().then(function(data){
+      if(!res.ok) throw new Error(data.detail||'Неверный код');
+      setAuthToken(data.token);
+      document.getElementById('authScreen').classList.remove('show');
+      haptic('success');
+      initApp();
+    });
+  }).catch(function(err){
+    errEl.textContent=err.message||'Ошибка'; haptic('error');
+  });
+});
+
+document.getElementById('linkResendCode').addEventListener('click',function(){
+  var value=authValueInput().value.trim();
+  fetch('/api/auth/resend',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({channel:authChannel,value:value}),
+  }).then(function(res){
+    return res.json().then(function(data){
+      showToast(res.ok ? 'Код отправлен повторно' : (data.detail||'Не удалось отправить код'));
+    });
+  }).catch(function(){ showToast('Ошибка сети'); });
+});
+
+// Telegram WebView — вход автоматический по initData.
+// Вне Telegram: есть сохранённый токен личного кабинета — используем его,
+// иначе показываем форму входа/регистрации и ждём.
+if(tg && tg.initData){
+  initApp();
+}else if(authToken()){
+  initApp();
+}else{
+  document.getElementById('authScreen').classList.add('show');
+}
 
 // ── Copy links (Home + Partners) ──
 function bindCopyLink(btnId,textId){
@@ -1422,7 +1611,9 @@ function openSupport(){
 document.getElementById('btnSupportTop').addEventListener('click',openSupport);
 document.getElementById('btnSupportProfile').addEventListener('click',openSupport);
 
-// ── Выход из профиля: локальный сброс + закрытие мини-аппа (Telegram-аккаунт трогать нельзя) ──
+// ── Выход из профиля ──
+// В Telegram-WebView аккаунт неразрывно привязан к Telegram — выход = закрыть мини-апп.
+// Вне Telegram (вход по email/телефону) — обычный выход из личного кабинета.
 document.getElementById('btnLogout').addEventListener('click',function(){
   haptic('warning');
   try{ localStorage.removeItem('blvpn:settings'); }catch(e){}
@@ -1432,7 +1623,10 @@ document.getElementById('btnLogout').addEventListener('click',function(){
     showToast('Выходим…');
     setTimeout(function(){ tg.close(); }, 400);
   }else{
-    showToast('Мини-приложение привязано к вашему Telegram-аккаунту — выйти можно, закрыв его');
+    setAuthToken(null);
+    document.body.classList.remove('loaded');
+    document.getElementById('authScreen').classList.add('show');
+    showToast('Вы вышли из аккаунта');
   }
 });
 document.getElementById('btnSupportQuick').addEventListener('click',openSupport);
