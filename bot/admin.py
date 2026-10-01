@@ -118,7 +118,7 @@ async def cb_grant(cb: CallbackQuery, state: FSMContext) -> None:
     await cb.message.answer(
         "Отправь в формате: <code>&lt;tg_id&gt; &lt;plan&gt;</code>\n"
         "Планы: 1m / 3m / 6m\n"
-        "Пример: <code>1783373795 3m</code>",
+        "Пример: <code>123456789 3m</code>",
         parse_mode="HTML",
     )
     await cb.answer()
@@ -129,7 +129,7 @@ async def cb_grant(cb: CallbackQuery, state: FSMContext) -> None:
 async def grant_process(message: Message, state: FSMContext) -> None:
     parts = (message.text or "").strip().split()
     if len(parts) != 2:
-        await message.answer("Неверный формат. Пример: <code>1783373795 3m</code>",
+        await message.answer("Неверный формат. Пример: <code>123456789 3m</code>",
                              parse_mode="HTML")
         return
     tg_id_str, plan = parts
