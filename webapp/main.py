@@ -35,13 +35,17 @@ from db.models import Payment, User
 from db.repo import (
     PLANS,
     SERVERS,
+    DeviceLimitReached,
+    SubscriptionRequired,
     add_support_message,
     generate_key,
     get_or_create_user,
     get_user_by_tg_id,
     grant_subscription,
     list_keys,
+    revoke_key,
 )
+from webapp.xui import XuiError
 from security.logging_setup import audit, setup_logging
 from webapp.middleware import SecurityHeadersMiddleware
 from webapp.rollypay import create_payment, verify_webhook_signature, generate_order_id
@@ -452,7 +456,15 @@ async def api_generate_key(
 ) -> dict:
     if not any(s["code"] == payload.country for s in SERVERS):
         raise HTTPException(400, detail="unknown server")
-    key = await generate_key(session, user, payload.country)
+    try:
+        key = await generate_key(session, user, payload.country)
+    except SubscriptionRequired:
+        raise HTTPException(403, detail="subscription required")
+    except DeviceLimitReached as e:
+        raise HTTPException(409, detail=str(e))
+    except XuiError as e:
+        logger.error("xui: не удалось выдать ключ user=%s: %s", user.tg_id, e)
+        raise HTTPException(502, detail="vpn server unavailable")
     audit(user.tg_id, "key_generated", country=payload.country, key_id=key.id)
     # На выход отдаём расшифрованное значение (только этому юзеру)
     from security.crypto import try_decrypt
@@ -461,6 +473,7 @@ async def api_generate_key(
         "country": key.country,
         "key_value": try_decrypt(key.key_value),
         "created_at": key.created_at.isoformat(),
+        "demo": not settings.has_real_vpn_panel,
     }
 
 
@@ -483,6 +496,21 @@ async def api_list_keys(
             for k in keys
         ]
     }
+
+
+@app.delete("/api/keys/{key_id}")
+@limiter.limit("20/minute")
+async def api_delete_key(
+    request: Request,
+    key_id: int,
+    session: AsyncSession = Depends(get_session),
+    user=Depends(current_user),
+) -> dict:
+    removed = await revoke_key(session, user, key_id)
+    if not removed:
+        raise HTTPException(404, detail="key not found")
+    audit(user.tg_id, "key_revoked", key_id=key_id)
+    return {"ok": True}
 
 
 class SupportRequest(BaseModel):

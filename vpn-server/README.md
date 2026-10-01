@@ -20,6 +20,28 @@ sudo bash install-3xui.sh
 #    сгенерируй inbound на порту 443 (VLESS + Reality).
 ```
 
+## Подключить панель к боту
+
+После шага 4 бот ещё не знает о сервере и выдаёт DEMO-ключи. Чтобы
+переключить на боевые — впиши в `.env` (см. `.env.example`):
+
+| Переменная | Где взять |
+| :--------- | :-------- |
+| `XUI_PANEL_URL` | `https://<ip>:<PANEL_PORT>` панели |
+| `XUI_USERNAME` / `XUI_PASSWORD` | логин/пароль панели (сменил в шаге 4) |
+| `XUI_INBOUND_ID` | список инбаундов в панели → id созданного VLESS+Reality |
+| `XUI_SERVER_HOST` | IP или домен, который увидит клиент (не обязательно = IP панели) |
+| `XUI_SERVER_PORT` | порт inbound'а (обычно 443) |
+| `XUI_REALITY_PUBLIC_KEY`, `XUI_REALITY_SHORT_ID`, `XUI_REALITY_SNI` | открой inbound в панели → «Reality settings» — там публичный ключ, short ID и target (sni) |
+| `XUI_FLOW` | обычно `xtls-rprx-vision` — смотри, что выбрано у клиента в том же inbound |
+
+Перезапусти бота — `/api/keys` и кнопка «Создать ключ» в мини-приложении
+начнут выдавать реальные VLESS-ссылки вместо `DEMO-*`.
+
+Один `.env` = одна панель/сервер (MVP). Для нескольких стран — несколько
+физических серверов потребуют расширения `webapp/xui.py` под карту
+`{country: XUI-конфиг}` вместо плоских переменных.
+
 ## Что делает setup-server.sh
 
 | Шаг | Действие |

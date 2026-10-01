@@ -9,6 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from config import settings
 from db.models import User, Subscription, VPNKey, SupportMessage, DeviceSlot
 from security.crypto import encrypt, try_decrypt
 
@@ -144,18 +145,51 @@ async def revoke_subscription(session: AsyncSession, user: User) -> None:
 
 # ------------------------- VPN-ключи -------------------------
 
+class SubscriptionRequired(ValueError):
+    """Нет активной подписки — ключ выдать нельзя."""
+
+
+class DeviceLimitReached(ValueError):
+    """Исчерпан лимит одновременных ключей (1 бесплатный + доп. устройства)."""
+
+
+async def count_keys(session: AsyncSession, user: User) -> int:
+    """Сколько ключей уже выдано пользователю."""
+    result = await session.execute(
+        select(func.count(VPNKey.id)).where(VPNKey.user_id == user.id)
+    )
+    return int(result.scalar_one() or 0)
+
+
 async def generate_key(
     session: AsyncSession,
     user: User,
     country: str,
 ) -> VPNKey:
     """
-    Заглушка генерации VPN-ключа.
-    Возвращает случайный UUID; в реальности здесь будет запрос к панели VPN.
+    Выдать новый VPN-ключ.
 
-    Значение ключа шифруется Fernet перед сохранением в БД.
+    Требует активную подписку и свободный слот устройства (1 входит в тариф
+    + сколько куплено в DeviceSlot). Если панель 3x-ui настроена (см.
+    config.has_real_vpn_panel) — ключ реальный, клиент заводится в инбаунде.
+    Иначе — DEMO-ключ (нерабочий, явно помечен), чтобы фронт/бот можно было
+    разрабатывать и показывать без боевого сервера.
+
+    Значение всегда шифруется Fernet перед сохранением в БД.
     """
-    plaintext = f"vless://{uuid4()}@blacklotus.vpn:443?type=tcp#{country}"
+    if not (user.subscription and user.is_subscribed):
+        raise SubscriptionRequired("нужна активная подписка")
+
+    limit = 1 + await count_devices(session, user)
+    if await count_keys(session, user) >= limit:
+        raise DeviceLimitReached(f"достигнут лимит устройств ({limit})")
+
+    if settings.has_real_vpn_panel:
+        from webapp.xui import create_client  # локальный импорт — без цикла webapp<->db
+        plaintext = await create_client(f"tg{user.tg_id}-{country}")
+    else:
+        plaintext = f"vless://{uuid4()}@DEMO.blacklotus.vpn:443?type=tcp#DEMO-{country}"
+
     key = VPNKey(
         user_id=user.id,
         country=country,
@@ -165,6 +199,22 @@ async def generate_key(
     await session.commit()
     await session.refresh(key)
     return key
+
+
+async def revoke_key(session: AsyncSession, user: User, key_id: int) -> bool:
+    """Удалить ключ: с панели (best-effort) и из БД. True, если что-то удалили."""
+    result = await session.execute(
+        select(VPNKey).where(VPNKey.id == key_id, VPNKey.user_id == user.id)
+    )
+    key = result.scalar_one_or_none()
+    if key is None:
+        return False
+    if settings.has_real_vpn_panel:
+        from webapp.xui import delete_client
+        await delete_client(try_decrypt(key.key_value))
+    await session.delete(key)
+    await session.commit()
+    return True
 
 
 async def list_keys(session: AsyncSession, user: User) -> list[VPNKey]:

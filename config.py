@@ -51,9 +51,23 @@ class Settings(BaseSettings):
     ROLLYPAY_SIGNING_SECRET: str = ""
     ROLLYPAY_API_URL: str = "https://api.rollypay.io"
 
+    # ── VPN-сервер (панель 3x-ui) ────────────────────────────────────
+    # Данные берутся один раз в панели после создания inbound (VLESS+Reality):
+    # адрес панели/логин/пароль, id инбаунда и публичные Reality-параметры.
+    # Пока не заполнено — выдаются демо-ключи с пометкой DEMO (ничего не ломается).
+    XUI_PANEL_URL: str = ""
+    XUI_USERNAME: str = ""
+    XUI_PASSWORD: str = ""
+    XUI_INBOUND_ID: int = 0
+    XUI_SERVER_HOST: str = ""
+    XUI_SERVER_PORT: int = 443
+    XUI_REALITY_PUBLIC_KEY: str = ""
+    XUI_REALITY_SHORT_ID: str = ""
+    XUI_REALITY_SNI: str = "www.microsoft.com"
+    XUI_FLOW: str = "xtls-rprx-vision"
+
     # ── Прочие секреты ─────────────────────────────────────────────
     JWT_SECRET: str = Field(..., min_length=16)
-    XRAY_API_KEY: str = ""
     PAYMENT_SECRET: str = ""
 
     # ── Бэкапы ─────────────────────────────────────────────────────
@@ -68,6 +82,7 @@ class Settings(BaseSettings):
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        env_ignore_empty=True,  # пустые "KEY=" в .env = не задано, а не ошибка типа
     )
 
     # ── Валидаторы ─────────────────────────────────────────────────
@@ -146,11 +161,20 @@ class Settings(BaseSettings):
         """WEBAPP_URL задан и это не плейсхолдер example.com."""
         return bool(self.WEBAPP_URL) and "example.com" not in self.WEBAPP_URL
 
+    @property
+    def has_real_vpn_panel(self) -> bool:
+        """Панель 3x-ui настроена — можно выдавать реальные ключи, а не DEMO."""
+        return bool(
+            self.XUI_PANEL_URL and self.XUI_USERNAME and self.XUI_PASSWORD
+            and self.XUI_INBOUND_ID and self.XUI_SERVER_HOST
+            and self.XUI_REALITY_PUBLIC_KEY and self.XUI_REALITY_SHORT_ID
+        )
+
     def masked(self) -> dict[str, Any]:
         """Настройки для лога (все секреты замаскированы)."""
         d = self.model_dump()
         for key in (
-            "BOT_TOKEN", "FERNET_KEY", "JWT_SECRET", "XRAY_API_KEY",
+            "BOT_TOKEN", "FERNET_KEY", "JWT_SECRET", "XUI_PASSWORD",
             "PAYMENT_SECRET", "DB_PASSWORD", "ROLLYPAY_API_KEY",
             "ROLLYPAY_SIGNING_SECRET",
         ):

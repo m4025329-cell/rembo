@@ -5,15 +5,19 @@
 import hashlib
 import hmac
 import json
+import time
 from urllib.parse import parse_qsl
 
 from config import settings
+
+MAX_INIT_DATA_AGE = 24 * 3600  # Telegram сам советует отвергать протухшие initData
 
 
 def verify_init_data(init_data: str) -> dict | None:
     """
     Проверить подпись initData и вернуть распарсенные поля.
-    Возвращает None, если подпись неверна.
+    Возвращает None, если подпись неверна или initData старше суток
+    (защита от повторного использования утёкшей строки).
     """
     if not init_data:
         return None
@@ -38,6 +42,12 @@ def verify_init_data(init_data: str) -> dict | None:
     ).hexdigest()
 
     if not hmac.compare_digest(calc_hash, received_hash):
+        return None
+
+    auth_date = parsed.get("auth_date")
+    if not auth_date or not auth_date.isdigit():
+        return None
+    if time.time() - int(auth_date) > MAX_INIT_DATA_AGE:
         return None
 
     # Парсим поле user (JSON)
