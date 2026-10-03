@@ -297,6 +297,8 @@ ol.steps li{display:flex;gap:12px;font-size:13px;line-height:1.5}
   background:conic-gradient(from 0deg,var(--a1),var(--a2),var(--hot),var(--a1));animation:spin 8s linear infinite}
 .avatar{width:100%;height:100%;border-radius:50%;background:var(--bg-2);display:flex;align-items:center;justify-content:center;
   font-size:22px;font-weight:700}
+.profile-head>div{min-width:0}
+.profile-name,.profile-email{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .profile-name{font-size:16px;font-weight:700;margin-bottom:2px}
 .profile-email{font-size:12px;color:var(--muted)}
 
@@ -566,47 +568,6 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
     </div>
   </section>
 
-  <!-- ============ Личный кабинет: вход по email/телефону (вне Telegram) ============ -->
-  <div id="authScreen">
-    <div class="auth-box">
-      <div style="text-align:center;margin-bottom:20px">
-        <div style="font-size:22px;font-weight:800;letter-spacing:-.01em">🖤 BlackLotusVPN</div>
-        <div class="muted" style="margin-top:4px">Личный кабинет</div>
-      </div>
-      <div class="auth-tabs">
-        <div class="auth-tab active" data-authchannel="email">Почта</div>
-        <div class="auth-tab" data-authchannel="phone">Телефон</div>
-      </div>
-
-      <!-- Шаг 1: вход или регистрация -->
-      <div id="authStepForm">
-        <div class="field">
-          <label id="authValueLabel">Email</label>
-          <input id="authValue" type="email" autocomplete="username" placeholder="you@example.com" />
-        </div>
-        <div class="field">
-          <label>Пароль</label>
-          <input id="authPassword" type="password" autocomplete="current-password" placeholder="Минимум 8 символов" />
-        </div>
-        <div class="auth-error" id="authError" role="alert" aria-live="polite"></div>
-        <button class="btn btn-primary ripple" id="btnAuthLogin">Войти</button>
-        <div class="auth-switch">Нет аккаунта? <a id="linkToRegister">Зарегистрироваться</a></div>
-      </div>
-
-      <!-- Шаг 2: код подтверждения (после регистрации) -->
-      <div id="authStepCode" style="display:none">
-        <p class="muted" style="margin-bottom:14px" id="authCodeHint"></p>
-        <div class="field">
-          <label>Код из письма/SMS</label>
-          <input id="authCode" type="text" inputmode="numeric" maxlength="6" placeholder="000000" />
-        </div>
-        <div class="auth-error" id="authCodeError" role="alert" aria-live="polite"></div>
-        <button class="btn btn-primary ripple" id="btnAuthVerify">Подтвердить</button>
-        <div class="auth-switch"><a id="linkResendCode">Отправить код ещё раз</a></div>
-      </div>
-    </div>
-  </div>
-
   <!-- ============ MODAL: выбор сервера для нового ключа ============ -->
   <div id="serverModal" style="position:fixed;inset:0;z-index:150;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6)">
     <div style="width:100%;max-width:540px;background:var(--bg-2);border-radius:22px 22px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));max-height:80vh;overflow-y:auto">
@@ -700,7 +661,7 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
         </div>
         <div class="list-row">
           <div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/></svg></div>
-          <div class="list-body"><div class="list-title">Telegram ID</div><div class="list-sub" id="pfIdRow">&mdash;</div></div>
+          <div class="list-body"><div class="list-title" id="pfIdLabel">Telegram ID</div><div class="list-sub" id="pfIdRow">&mdash;</div></div>
           <span class="verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Подтверждён</span>
         </div>
         <div class="list-row">
@@ -779,6 +740,48 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
   </section>
 
 </main>
+
+<!-- ============ Личный кабинет: вход по email/телефону (вне Telegram) ============ -->
+<!-- Вне <main>: main скрыт до body.loaded, а этот экран обязан показываться ДО него -->
+<div id="authScreen">
+  <div class="auth-box">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:22px;font-weight:800;letter-spacing:-.01em">🖤 BlackLotusVPN</div>
+      <div class="muted" style="margin-top:4px">Личный кабинет</div>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" data-authchannel="email">Почта</div>
+      <div class="auth-tab" data-authchannel="phone">Телефон</div>
+    </div>
+
+    <!-- Шаг 1: вход или регистрация -->
+    <div id="authStepForm">
+      <div class="field">
+        <label id="authValueLabel">Email</label>
+        <input id="authValue" type="email" autocomplete="username" placeholder="you@example.com" />
+      </div>
+      <div class="field">
+        <label>Пароль</label>
+        <input id="authPassword" type="password" autocomplete="current-password" placeholder="Минимум 8 символов" />
+      </div>
+      <div class="auth-error" id="authError" role="alert" aria-live="polite"></div>
+      <button class="btn btn-primary ripple" id="btnAuthLogin">Войти</button>
+      <div class="auth-switch">Нет аккаунта? <a id="linkToRegister">Зарегистрироваться</a></div>
+    </div>
+
+    <!-- Шаг 2: код подтверждения (после регистрации) -->
+    <div id="authStepCode" style="display:none">
+      <p class="muted" style="margin-bottom:14px" id="authCodeHint"></p>
+      <div class="field">
+        <label>Код из письма/SMS</label>
+        <input id="authCode" type="text" inputmode="numeric" maxlength="6" placeholder="000000" />
+      </div>
+      <div class="auth-error" id="authCodeError" role="alert" aria-live="polite"></div>
+      <button class="btn btn-primary ripple" id="btnAuthVerify">Подтвердить</button>
+      <div class="auth-switch"><a id="linkResendCode">Отправить код ещё раз</a></div>
+    </div>
+  </div>
+</div>
 
 <nav class="tabbar" role="tablist" aria-label="Разделы приложения">
   <button class="tabbtn active" data-tab="home" role="tab" aria-selected="true" aria-label="Главная"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Главная</span></button>
@@ -1171,8 +1174,12 @@ loadPlansAndServers();
 
 // ── QR code (real, qrcode-generator library) ──
 function makeQr(text,cell){
-  var qr=qrcode(0,'M'); qr.addData(text); qr.make();
-  return qr.createSvgTag({cellSize:cell||3,margin:2});
+  // CDN (cdnjs) может быть недоступен — не роняем вызывающий код (профиль/ключи)
+  if(typeof qrcode==='undefined') return '';
+  try{
+    var qr=qrcode(0,'M'); qr.addData(text); qr.make();
+    return qr.createSvgTag({cellSize:cell||3,margin:2});
+  }catch(e){ return ''; }
 }
 
 // ── Keys rendering ──
@@ -1332,13 +1339,20 @@ function deleteKey(id){
 // ── Profile + referral links ──
 function fillProfile(userData){
   var u=tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-  var name=userData&&userData.full_name ? userData.full_name : (u ? [u.first_name,u.last_name].filter(Boolean).join(' ')||u.username||'Пользователь' : 'Гость');
   var id=userData&&userData.tg_id ? userData.tg_id : (u ? u.id : null);
+  var contact=userData&&(userData.email||userData.phone); // вход по почте/телефону (вне Telegram)
+  var name=userData&&userData.full_name ? userData.full_name
+    : (u ? [u.first_name,u.last_name].filter(Boolean).join(' ')||u.username||'Пользователь'
+    : (contact || 'Гость'));
   document.getElementById('pfName').textContent=name;
-  document.getElementById('pfEmail').textContent=userData&&userData.username ? '@'+userData.username : '—';
+  document.getElementById('pfEmail').textContent=userData&&userData.username ? '@'+userData.username
+    : (contact || '—');
   document.getElementById('pfAvatar').textContent=(name[0]||'🖤').toUpperCase();
   document.getElementById('pfNameRow').textContent=name;
-  document.getElementById('pfIdRow').textContent=id?('ID '+id):'—';
+  var idLabel=document.getElementById('pfIdLabel'), idRow=document.getElementById('pfIdRow');
+  if(id){ idLabel.textContent='Telegram ID'; idRow.textContent='ID '+id; }
+  else if(contact){ idLabel.textContent=userData.email?'Email':'Телефон'; idRow.textContent=contact; }
+  else { idLabel.textContent='Telegram ID'; idRow.textContent='—'; }
 
   var link='t.me/BlackLotusVPNBot?start=ref_'+(id||'demo');
   document.getElementById('shareLink').textContent=link;
@@ -1429,6 +1443,7 @@ function loadUserData(){
     if(res.status===401 && !(tg && tg.initData) && authToken()){
       // Токен личного кабинета протух/невалиден — обратно на экран входа
       setAuthToken(null);
+      showAuthStep('form');
       document.getElementById('authScreen').classList.add('show');
       throw new Error('session expired');
     }
@@ -1656,6 +1671,12 @@ document.getElementById('btnLogout').addEventListener('click',function(){
   }else{
     setAuthToken(null);
     document.body.classList.remove('loaded');
+    document.getElementById('authPassword').value='';
+    document.getElementById('authCode').value='';
+    document.getElementById('authError').textContent='';
+    document.getElementById('authCodeError').textContent='';
+    setAuthMode('login');
+    showAuthStep('form');
     document.getElementById('authScreen').classList.add('show');
     showToast('Вы вышли из аккаунта');
   }
