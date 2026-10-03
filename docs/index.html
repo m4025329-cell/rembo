@@ -242,6 +242,10 @@ main{position:relative;z-index:1;padding:4px 16px 20px}
   flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:18px}
 #authScreen.show{display:flex}
 .auth-box{width:100%;max-width:360px}
+@media (prefers-reduced-motion: no-preference){
+  #authScreen.show .auth-box{animation:authIn .4s cubic-bezier(.22,1,.36,1)}
+}
+@keyframes authIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
 .auth-tabs{display:flex;gap:8px;margin-bottom:16px}
 .auth-tab{flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-hi);
   background:rgba(255,255,255,.04);color:var(--muted);font-weight:600;font-size:13px;cursor:pointer;text-align:center}
@@ -251,6 +255,8 @@ main{position:relative;z-index:1;padding:4px 16px 20px}
 .field input{width:100%;padding:12px 14px;border-radius:11px;border:1px solid var(--border-hi);
   background:var(--bg-2);color:var(--text);font-size:15px;font-family:inherit}
 .field input:focus{outline:none;border-color:var(--a1)}
+.field input.invalid{border-color:var(--err)}
+.btn.loading{opacity:.75;pointer-events:none}
 .auth-error{color:var(--err);font-size:13px;margin:-4px 0 12px;min-height:16px}
 .auth-switch{text-align:center;font-size:13px;color:var(--muted);margin-top:14px}
 .auth-switch a{color:var(--a3);cursor:pointer;font-weight:600}
@@ -582,7 +588,7 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
           <label>Пароль</label>
           <input id="authPassword" type="password" autocomplete="current-password" placeholder="Минимум 8 символов" />
         </div>
-        <div class="auth-error" id="authError"></div>
+        <div class="auth-error" id="authError" role="alert" aria-live="polite"></div>
         <button class="btn btn-primary ripple" id="btnAuthLogin">Войти</button>
         <div class="auth-switch">Нет аккаунта? <a id="linkToRegister">Зарегистрироваться</a></div>
       </div>
@@ -594,7 +600,7 @@ html.hc{--border:rgba(255,255,255,.2);--border-hi:rgba(255,255,255,.3);--muted:#
           <label>Код из письма/SMS</label>
           <input id="authCode" type="text" inputmode="numeric" maxlength="6" placeholder="000000" />
         </div>
-        <div class="auth-error" id="authCodeError"></div>
+        <div class="auth-error" id="authCodeError" role="alert" aria-live="polite"></div>
         <button class="btn btn-primary ripple" id="btnAuthVerify">Подтвердить</button>
         <div class="auth-switch"><a id="linkResendCode">Отправить код ещё раз</a></div>
       </div>
@@ -1507,14 +1513,32 @@ function showAuthStep(step){
   document.getElementById('authStepCode').style.display = step==='code' ? 'block' : 'none';
 }
 
+function setBtnLoading(btn,loading,busyText){
+  if(loading){ btn._label=btn.textContent; btn.textContent=busyText; btn.classList.add('loading'); btn.disabled=true; }
+  else{ btn.textContent=btn._label||btn.textContent; btn.classList.remove('loading'); btn.disabled=false; }
+}
+function failField(input,box,errEl,msg){
+  input.classList.add('invalid');
+  errEl.textContent=msg;
+  if(window.M) M.shake(box);
+  haptic('error');
+}
+
 document.getElementById('btnAuthLogin').addEventListener('click',function(){
-  var value=authValueInput().value.trim();
-  var password=document.getElementById('authPassword').value;
-  var errEl=document.getElementById('authError');
-  errEl.textContent='';
-  if(!value || password.length<8){ errEl.textContent='Заполните поля (пароль от 8 символов)'; return; }
+  var btn=this;
+  var valueInput=authValueInput(), passwordInput=document.getElementById('authPassword');
+  var value=valueInput.value.trim(), password=passwordInput.value;
+  var box=document.getElementById('authStepForm'), errEl=document.getElementById('authError');
+  errEl.textContent=''; valueInput.classList.remove('invalid'); passwordInput.classList.remove('invalid');
+  if(!value || password.length<8){
+    if(!value) valueInput.classList.add('invalid');
+    if(password.length<8) passwordInput.classList.add('invalid');
+    failField(password.length<8?passwordInput:valueInput, box, errEl, 'Заполните поля (пароль от 8 символов)');
+    return;
+  }
   var url = authMode==='login' ? '/api/auth/login' : '/api/auth/register';
   haptic('select');
+  setBtnLoading(btn,true,authMode==='login'?'Входим…':'Регистрируем…');
   fetch(url,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -1533,16 +1557,19 @@ document.getElementById('btnAuthLogin').addEventListener('click',function(){
       }
     });
   }).catch(function(err){
-    errEl.textContent=err.message||'Ошибка'; haptic('error');
-  });
+    failField(passwordInput, box, errEl, err.message||'Ошибка');
+  }).finally(function(){ setBtnLoading(btn,false); });
 });
 
 document.getElementById('btnAuthVerify').addEventListener('click',function(){
+  var btn=this;
   var value=authValueInput().value.trim();
-  var code=document.getElementById('authCode').value.trim();
-  var errEl=document.getElementById('authCodeError');
-  errEl.textContent='';
+  var codeInput=document.getElementById('authCode');
+  var code=codeInput.value.trim();
+  var box=document.getElementById('authStepCode'), errEl=document.getElementById('authCodeError');
+  errEl.textContent=''; codeInput.classList.remove('invalid');
   haptic('select');
+  setBtnLoading(btn,true,'Проверяем…');
   fetch('/api/auth/verify',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -1556,8 +1583,12 @@ document.getElementById('btnAuthVerify').addEventListener('click',function(){
       initApp();
     });
   }).catch(function(err){
-    errEl.textContent=err.message||'Ошибка'; haptic('error');
-  });
+    failField(codeInput, box, errEl, err.message||'Ошибка');
+  }).finally(function(){ setBtnLoading(btn,false); });
+});
+
+['authValue','authPassword','authCode'].forEach(function(id){
+  document.getElementById(id).addEventListener('input',function(){ this.classList.remove('invalid'); });
 });
 
 document.getElementById('linkResendCode').addEventListener('click',function(){
@@ -1671,6 +1702,7 @@ var M=(function(){
     el.style.transition=''; requestAnimationFrame(function(){ el.style.width=w; });
   }
   function pop(el){ go(el,[{transform:'scale(1)'},{transform:'scale(1.28)'},{transform:'scale(.94)'},{transform:'scale(1)'}],{duration:440,easing:'ease-out',fill:'none'}); }
+  function shake(el){ go(el,[{transform:'translateX(0)'},{transform:'translateX(-8px)'},{transform:'translateX(7px)'},{transform:'translateX(-5px)'},{transform:'translateX(3px)'},{transform:'translateX(0)'}],{duration:400,easing:'ease-out',fill:'none'}); }
   function wiggle(el){ go(el,[{transform:'rotate(0)'},{transform:'rotate(-14deg)'},{transform:'rotate(12deg)'},{transform:'rotate(-8deg)'},{transform:'rotate(4deg)'},{transform:'rotate(0)'}],{duration:650,fill:'none'}); }
   // Section enter: stagger cards, grow server-load bars
   function enter(sec){
@@ -1724,7 +1756,7 @@ var M=(function(){
       cta.style.translate=dx+'px '+dy+'px';
     });
   }
-  return {intro:intro,enter:enter,pop:pop};
+  return {intro:intro,enter:enter,pop:pop,shake:shake};
 })();
 
 applySettings();
